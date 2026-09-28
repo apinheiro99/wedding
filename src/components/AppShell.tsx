@@ -4,7 +4,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { MeContext, type Me } from "@/lib/me";
+import { useEvents } from "@/lib/events";
+import { manager } from "@/lib/upload/manager";
 import { Footer } from "./Footer";
+import { UploadPill } from "./UploadPill";
 
 const NAV = [
   { href: "/photos", label: "Fotos", icon: "M4 5h16v14H4z M4 15l4-4 4 4 3-3 5 5 M15 9h.01" },
@@ -54,6 +57,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </header>
       <main className="mx-auto max-w-7xl px-4 pb-10 pt-5 md:px-8 md:pt-8 min-h-[70dvh]">{children}</main>
       <Footer className="pb-28 md:pb-10" />
+      {!path.startsWith("/upload") && <UploadPill />}
+      <UploadEvents />
       <nav aria-label="Principal" className="md:hidden fixed inset-x-0 bottom-0 z-30 border-t border-line/70 bg-card/95 backdrop-blur-md pb-safe">
         <div className="grid grid-cols-4">
           {NAV.map((n) => {
@@ -75,6 +80,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </nav>
     </MeContext.Provider>
   );
+}
+
+function UploadEvents() {
+  useEvents((e) => { if (e.t === "upload") manager().onServerUpload(e.uploadId, e.state, e.reason); });
+  return null;
 }
 
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: React.ReactNode; actions?: React.ReactNode }) {
