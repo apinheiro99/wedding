@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # One image, three roles: web (Next.js UI+API), worker (background jobs). Upload runs inside web.
-FROM node:20-bookworm-slim AS base
+FROM node:22-trixie-slim AS base
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ffmpeg libheif-examples libheif1 libheif-plugin-libde265 libvips-tools ca-certificates tini \
     && rm -rf /var/lib/apt/lists/*
