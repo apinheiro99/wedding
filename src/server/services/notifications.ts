@@ -116,7 +116,7 @@ export async function runDailyReport(force = false) {
 export async function runCleanup() {
   const stale = await db().query(
     "UPDATE uploads SET state = 'CANCELLED', failure_reason = 'STALE', updated_at = now() WHERE state = 'UPLOADING' AND updated_at < now() - interval '14 days' RETURNING id");
-  for (const u of stale.rows) await fsp.rm(abs(`staging/${u.id}`), { recursive: true, force: true });
+  for (const u of stale.rows) await fsp.rm(abs(`staging/${u.id}`), { recursive: true, force: true }).catch(() => {});
   const old = await db().query(
     "SELECT id, relative_path FROM package_versions WHERE state IN ('RETIRED') AND retired_at < now() - interval '12 hours' AND relative_path IS NOT NULL");
   for (const v of old.rows) {

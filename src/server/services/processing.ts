@@ -72,15 +72,11 @@ async function videoMeta(file: string): Promise<Meta> {
 async function sourceForSharp(file: string, mime: string | null, tmpDir: string): Promise<string | Buffer> {
   const heic = /heic|heif/i.test(mime ?? "") || /\.(heic|heif)$/i.test(file);
   if (!heic) return file;
-  try { await sharp(file).metadata(); return file; } catch { /* prebuilt sharp lacks HEVC */ }
+  // prebuilt sharp cannot decode HEVC; system libheif (with libde265) can
   const out = `${tmpDir}/decoded.jpg`;
-  try {
-    await run("heif-convert", ["-q", "92", file, out], { timeout: 120_000 });
-    return out;
-  } catch {
-    await run("vips", ["copy", file, out + "[Q=92]"], { timeout: 120_000 });
-    return out;
-  }
+  try { await run("heif-convert", ["-q", "92", file, out], { timeout: 120_000 }); return out; } catch { /* try vips */ }
+  try { await run("vips", ["copy", file, out + "[Q=92]"], { timeout: 120_000 }); return out; } catch { /* last resort */ }
+  return file;
 }
 
 async function videoFrame(file: string, tmpDir: string, durationMs: number | null): Promise<string> {
@@ -124,7 +120,7 @@ export async function processMedia(mediaId: string) {
   } catch (e) {
     log.warn("thumbnail.failed", { mediaId, error: (e as Error).message.slice(0, 300) });
   } finally {
-    await fsp.rm(tmpDir, { recursive: true, force: true });
+    await fsp.rm(tmpDir, { recursive: true, force: true }).catch(() => {}); // NFS may briefly keep .nfs* files
   }
 
   const date = canonicalDate({ exif: meta.exifDate, container: meta.containerDate, clientFile: m.client_last_modified, upload: m.created_at });

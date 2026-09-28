@@ -2,7 +2,7 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import crypto from "node:crypto";
 import path from "node:path";
-import archiver from "archiver";
+import { ZipArchive } from "archiver";
 import { db, tx, type Queryable } from "../db";
 import { abs } from "../storage";
 import { config } from "../config";
@@ -147,20 +147,20 @@ export async function buildPackage(packageId: string): Promise<"BUILT" | "EMPTY"
 export function writeZip(dest: string, entries: { path: string; name: string }[]): Promise<void> {
   return new Promise((resolve, reject) => {
     const out = fs.createWriteStream(dest);
-    const zip = archiver("zip", { store: true, forceZip64: false });
+    const zip = new ZipArchive({ store: true });
     out.on("close", resolve);
     out.on("error", reject);
     zip.on("error", reject);
     zip.on("warning", reject);
     zip.pipe(out);
-    for (const e of entries) zip.file(e.path, { name: e.name, store: true });
+    for (const e of entries) zip.file(e.path, { name: e.name });
     zip.finalize();
   });
 }
 
 export function streamZip(entries: { path: string; name: string }[]) {
-  const zip = archiver("zip", { store: true });
-  for (const e of entries) zip.file(e.path, { name: e.name, store: true });
+  const zip = new ZipArchive({ store: true });
+  for (const e of entries) zip.file(e.path, { name: e.name });
   zip.finalize();
   return zip;
 }

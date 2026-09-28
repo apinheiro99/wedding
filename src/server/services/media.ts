@@ -95,7 +95,7 @@ export async function finalizeUpload(uploadId: string) {
       await enqueue("MEDIA_PROCESS", { mediaId }, { dedupeKey: `process:${mediaId}`, priority: 50 }, c);
       return { state: "COMPLETE", mediaId };
     });
-    await fsp.rm(abs(`staging/${uploadId}`), { recursive: true, force: true });
+    await fsp.rm(abs(`staging/${uploadId}`), { recursive: true, force: true }).catch(() => {});
     await emit(result.state, result.mediaId);
     if (result.state === "COMPLETE") await publish({ t: "media", mediaId: result.mediaId, userId: up.user_id, change: "added" });
     return result.state;

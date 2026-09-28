@@ -142,6 +142,6 @@ export async function cancelUpload(userId: string, id: string) {
   await tx(async (c) => {
     await c.query("UPDATE uploads SET state = 'CANCELLED', updated_at = now() WHERE id = $1 AND state = 'UPLOADING'", [id]);
   });
-  await fsp.rm(abs(`staging/${id}`), { recursive: true, force: true });
+  await fsp.rm(abs(`staging/${id}`), { recursive: true, force: true }).catch(() => {});
   return { state: "CANCELLED" };
 }
