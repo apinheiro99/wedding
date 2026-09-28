@@ -98,14 +98,16 @@ function useHeroes() {
   return h;
 }
 
-// Which photo each page uses, and which side the couple stands on (title goes on the other side).
-const BANNERS: { prefix: string; slot: keyof Heroes; couple: "left" | "right" | "center"; watermark?: boolean }[] = [
-  { prefix: "/photos", slot: "landing-desktop", couple: "right" },
-  { prefix: "/albums", slot: "landing-desktop", couple: "right" },
-  { prefix: "/upload", slot: "auth", couple: "left" },
-  { prefix: "/downloads", slot: "landing-mobile", couple: "center" },
-  { prefix: "/account", slot: "auth", couple: "left", watermark: true },
+// Which photo each page uses, and where the couple sits in frame — 3 corner
+// crops so the subjects land in the strip above the cards, not directly behind them.
+const BANNERS: { prefix: string; slot: keyof Heroes; pos: "top-left" | "top-right" | "top-center" }[] = [
+  { prefix: "/photos", slot: "landing-desktop", pos: "top-right" },
+  { prefix: "/albums", slot: "landing-desktop", pos: "top-right" },
+  { prefix: "/upload", slot: "auth", pos: "top-left" },
+  { prefix: "/downloads", slot: "landing-mobile", pos: "top-center" },
+  { prefix: "/account", slot: "auth", pos: "top-left" },
 ];
+const POS_CLASS = { "top-left": "object-[20%_26%]", "top-right": "object-[78%_24%]", "top-center": "object-[50%_22%]" } as const;
 
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: React.ReactNode; actions?: React.ReactNode }) {
   const path = usePathname();
@@ -114,27 +116,6 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   const v = b && heroes ? heroes[b.slot] || heroes["landing-desktop"] || heroes["landing-mobile"] : 0;
   const [loaded, setLoaded] = useState(false);
 
-  if (b && v && b.watermark) {
-    const pos = b.couple === "right" ? "object-[70%_40%]" : b.couple === "left" ? "object-[25%_40%]" : "object-[50%_40%]";
-    return (
-      <>
-        {/* whole-page watermark: faded photo fixed behind the content */}
-        <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`/api/public/hero?slot=${heroes && heroes[b.slot] ? b.slot : "landing-desktop"}&w=1920&v=${v}`} alt="" onLoad={() => setLoaded(true)}
-            className={`h-full w-full object-cover ${pos} saturate-[.75] transition-opacity duration-1000 ${loaded ? "opacity-[.42]" : "opacity-0"}`} />
-          <div className="absolute inset-0 bg-gradient-to-b from-ivory/35 via-ivory/15 to-ivory/55" />
-        </div>
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-4 md:mb-8">
-          <div>
-            <h1 className="font-serif text-[30px] leading-tight tracking-tight md:text-[40px]">{title}</h1>
-            {subtitle && <p className="mt-1 text-muted">{subtitle}</p>}
-          </div>
-          {actions}
-        </div>
-      </>
-    );
-  }
   if (!b || !v) {
     return (
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4 md:mb-8">
@@ -146,22 +127,23 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
       </div>
     );
   }
-  const right = b.couple === "left";
-  const pos = b.couple === "right" ? "object-[70%_35%]" : b.couple === "left" ? "object-[25%_35%]" : "object-[50%_35%]";
+
   return (
-    <div className="relative -mx-4 -mt-5 mb-6 overflow-hidden bg-[#2a2520] md:mx-0 md:mt-0 md:mb-8 md:rounded-[28px] md:shadow-soft">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={`/api/public/hero?slot=${heroes && heroes[b.slot] ? b.slot : "landing-desktop"}&w=1920&v=${v}`} alt="" aria-hidden onLoad={() => setLoaded(true)}
-        className={`absolute inset-0 h-full w-full object-cover ${pos} transition duration-1000 ${loaded ? "scale-100 opacity-100" : "scale-105 opacity-0"}`} />
-      <div aria-hidden className={`absolute inset-0 ${right ? "bg-gradient-to-l" : "bg-gradient-to-r"} from-black/65 via-black/25 to-transparent`} />
-      <div aria-hidden className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/55 to-transparent" />
-      <div className={`relative flex min-h-[190px] flex-col justify-end gap-4 px-5 pb-5 pt-16 text-white md:min-h-[260px] md:px-9 md:pb-8 ${right ? "md:items-end md:text-right" : ""}`}>
-        <div>
-          <h1 className="font-serif text-[34px] leading-tight tracking-tight drop-shadow-sm md:text-[52px]">{title}</h1>
-          {subtitle && <div className="mt-1 text-white/85">{subtitle}</div>}
-        </div>
-        {actions && <div className={right ? "md:self-end" : ""}>{actions}</div>}
+    <>
+      {/* whole-page watermark: fixed photo behind the content, faded but visible; couple framed in the corner opposite the title so cards don't sit right on top of them */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={`/api/public/hero?slot=${heroes && heroes[b.slot] ? b.slot : "landing-desktop"}&w=1920&v=${v}`} alt="" onLoad={() => setLoaded(true)}
+          className={`h-full w-full object-cover ${POS_CLASS[b.pos]} saturate-[.9] transition-opacity duration-1000 ${loaded ? "opacity-[.6]" : "opacity-0"}`} />
+        <div className="absolute inset-0 bg-gradient-to-b from-ivory/65 via-ivory/25 to-ivory/70" />
       </div>
-    </div>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4 md:mb-8">
+        <div>
+          <h1 className="font-serif text-[30px] leading-tight tracking-tight md:text-[40px]">{title}</h1>
+          {subtitle && <p className="mt-1 text-muted">{subtitle}</p>}
+        </div>
+        {actions}
+      </div>
+    </>
   );
 }
