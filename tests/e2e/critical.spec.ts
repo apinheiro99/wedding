@@ -5,9 +5,9 @@ import path from "node:path";
 import os from "node:os";
 
 const FAMILY_LOGIN = process.env.E2E_FAMILY_LOGIN ?? "familia";
-const FAMILY_PASSWORD = process.env.E2E_FAMILY_PASSWORD ?? "";
-const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? "";
-const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? "";
+const FAMILY_PASSWORD = process.env.E2E_FAMILY_PASSWORD!;
+const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL!;
+const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD!;
 const H = { "x-requested-with": "fetch" };
 
 const seen = new Set<string>();

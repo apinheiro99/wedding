@@ -23,7 +23,7 @@ export async function setupHarness(): Promise<Harness> {
     PG_HOST: process.env.PG_TEST_HOST ?? "localhost",
     PG_PORT: process.env.PG_TEST_PORT ?? "5432",
     PG_USER: process.env.PG_TEST_USER ?? "postgres",
-    PG_PASSWORD: process.env.PG_TEST_PASSWORD ?? "",
+    PG_PASSWORD: requiredEnv("PG_TEST_PASSWORD"),
     PG_APP_DB: dbName,
     STORAGE_ROOT: tmpDir,
     EMAIL_PROVIDER: "memory",
@@ -63,4 +63,10 @@ export async function setupHarness(): Promise<Harness> {
   };
 
   return { config, tmpDir, teardown };
+}
+
+function requiredEnv(k: string): string {
+  const v = process.env[k];
+  if (!v) throw new Error(`${k} is required (set it in .env.test, which is gitignored)`);
+  return v;
 }

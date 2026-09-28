@@ -1,3 +1,5 @@
+// Local test secrets live in .env.test (gitignored); CI passes real env vars.
+try { process.loadEnvFile(".env.test"); } catch { /* optional */ }
 import { defineConfig } from "@playwright/test";
 // Runs against a live dev server (EMAIL_PROVIDER=dev so OTPs can be read from /api/dev/mail).
 export default defineConfig({
