@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { Footer } from "./Footer";
 
 const TABS = [
-  ["/admin", "Visão geral"], ["/admin/users", "Usuários"], ["/admin/media", "Mídias"],
+  ["/admin", "Visão geral"], ["/admin/metrics", "Métricas"], ["/admin/users", "Usuários"], ["/admin/media", "Mídias"],
   ["/admin/packages", "ZIPs"], ["/admin/jobs", "Jobs"], ["/admin/settings", "Configurações"],
 ] as const;
 
