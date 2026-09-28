@@ -50,7 +50,17 @@ export function userFolderName(displayName: string, userId: string): string {
   return `${slug}__${userId.slice(0, 8)}`;
 }
 
-export async function dirSize(relative: string): Promise<number> {
+const sizeCache = new Map<string, { at: number; v: Promise<number> }>();
+/** Recursive size; cached 5 min because walking NFS is slow. */
+export function dirSize(relative: string): Promise<number> {
+  const c = sizeCache.get(relative);
+  if (c && Date.now() - c.at < 300_000) return c.v;
+  const v = dirSizeUncached(relative);
+  sizeCache.set(relative, { at: Date.now(), v });
+  return v;
+}
+
+async function dirSizeUncached(relative: string): Promise<number> {
   let total = 0;
   async function walk(p: string) {
     let entries;

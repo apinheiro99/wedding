@@ -10,7 +10,7 @@ for (const [label, vp] of [["desk", { width: 1440, height: 900 }], ["mob", { wid
   await p.request.post(base + "/api/admin/auth/login", { data: { email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD }, headers: { "x-requested-with": "fetch" } });
   for (const path of pages) {
     await p.goto(base + path, { waitUntil: "networkidle" }).catch(() => {});
-    await p.waitForTimeout(1200);
+    await p.waitForTimeout(Number(process.env.WAIT ?? 1200));
     await p.screenshot({ path: `${out}/${label}${path.replace(/\//g, "_") || "_root"}.png`, fullPage: process.env.FULL === "1" });
   }
   await ctx.close();

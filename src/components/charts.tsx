@@ -109,8 +109,8 @@ export function Columns({ values, labels, format = (n) => n.toLocaleString("pt-B
           </div>
         ))}
       </div>
-      <div className="mt-2 flex gap-[2px] border-t border-line pt-1.5">
-        {labels.map((l, i) => <span key={i} className="flex-1 truncate text-center text-[10px] text-muted">{i % every === 0 ? l : ""}</span>)}
+      <div className="mt-2 flex min-h-5 gap-[2px] border-t border-line pt-1.5">
+        {labels.map((l, i) => <span key={i} className="relative flex-1 text-center text-[10px] leading-tight text-muted">{i % every === 0 && <span className={every > 1 ? "absolute left-0 whitespace-nowrap" : ""}>{l}</span>}</span>)}
       </div>
     </div>
   );

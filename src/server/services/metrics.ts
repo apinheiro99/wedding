@@ -45,7 +45,8 @@ export async function metrics(tzRaw: string | null) {
     LEFT JOIN (SELECT (started_at AT TIME ZONE $1)::date AS day, count(*) AS n FROM download_events GROUP BY 1) c ON c.day = d::date
     ORDER BY d`, [tz]);
 
-  const cameras = await q(`SELECT trim(concat_ws(' ', nullif(metadata_json->>'make',''), nullif(metadata_json->>'model',''))) AS cam, count(*)::int AS n
+  const cameras = await q(`SELECT trim(CASE WHEN metadata_json->>'model' ILIKE (metadata_json->>'make') || '%' THEN metadata_json->>'model'
+      ELSE concat_ws(' ', nullif(metadata_json->>'make',''), nullif(metadata_json->>'model','')) END) AS cam, count(*)::int AS n
     ${active} AND (metadata_json->>'make' IS NOT NULL OR metadata_json->>'model' IS NOT NULL) GROUP BY 1 ORDER BY n DESC LIMIT 8`);
 
   const sizes = await q(`SELECT b, count(*)::int AS n FROM (SELECT CASE

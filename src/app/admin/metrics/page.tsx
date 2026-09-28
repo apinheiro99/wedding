@@ -25,7 +25,7 @@ type M = {
   topDownloaded: { name: string; label: string; n: number }[];
 };
 
-const SIZE_LABELS = ["< 1 MB", "1–5 MB", "5–20 MB", "20–100 MB", "100 MB–1 GB", "> 1 GB"];
+const SIZE_LABELS = ["< 1 MB", "1–5 MB", "5–20 MB", "20–100 MB", "0,1–1 GB", "> 1 GB"];
 const n = (x: number) => x.toLocaleString("pt-BR");
 const day = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }).replace(".", "");
 const longDay = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "long", year: "numeric" });
@@ -61,7 +61,7 @@ export default function Metrics() {
         <Kpi accent label="Mídias no álbum" value={n(k.total)} hint={`${n(k.photos)} fotos · ${n(k.videos)} vídeos${k.others ? ` · ${n(k.others)} outros` : ""}`} />
         <Kpi label="Volume de originais" value={fmtBytes(k.bytes)} hint={k.total ? `média ${fmtBytes(k.bytes / k.total)} por arquivo` : undefined} />
         <Kpi label="Pessoas enviando" value={n(k.people)} hint={`${n(k.users)} cadastradas · +${n(k.newUsers7d)} em 7 dias`} />
-        <Kpi label="Horas de vídeo" value={k.videoMs ? fmtDuration(k.videoMs) : "0:00"} hint={`${n(k.videos)} vídeos`} />
+        <Kpi label="Tempo de vídeo" value={k.videoMs ? fmtDuration(k.videoMs) : "0:00"} hint={`${n(k.videos)} vídeos`} />
         <Kpi label="Duplicatas evitadas" value={n(k.duplicates)} hint={`${fmtBytes(k.duplicateBytes)} economizados`} />
         <Kpi label="Restaurados" value={n(k.restored)} hint="reenvios de itens excluídos" />
         <Kpi label="Downloads" value={n(k.downloads)} hint={`${fmtBytes(k.downloadBytes)} · ${n(k.downloaders)} pessoas`} />
