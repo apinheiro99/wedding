@@ -14,3 +14,4 @@ secrets/
 test-results/
 playwright-report/
 incus_*.yaml
+*.tsbuildinfo
