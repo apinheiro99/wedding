@@ -99,12 +99,12 @@ function useHeroes() {
 }
 
 // Which photo each page uses, and which side the couple stands on (title goes on the other side).
-const BANNERS: { prefix: string; slot: keyof Heroes; couple: "left" | "right" | "center" }[] = [
+const BANNERS: { prefix: string; slot: keyof Heroes; couple: "left" | "right" | "center"; watermark?: boolean }[] = [
   { prefix: "/photos", slot: "landing-desktop", couple: "right" },
   { prefix: "/albums", slot: "landing-desktop", couple: "right" },
   { prefix: "/upload", slot: "auth", couple: "left" },
   { prefix: "/downloads", slot: "landing-mobile", couple: "center" },
-  { prefix: "/account", slot: "auth", couple: "left" },
+  { prefix: "/account", slot: "auth", couple: "left", watermark: true },
 ];
 
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: React.ReactNode; actions?: React.ReactNode }) {
@@ -114,6 +114,27 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   const v = b && heroes ? heroes[b.slot] || heroes["landing-desktop"] || heroes["landing-mobile"] : 0;
   const [loaded, setLoaded] = useState(false);
 
+  if (b && v && b.watermark) {
+    const pos = b.couple === "right" ? "object-[70%_40%]" : b.couple === "left" ? "object-[25%_40%]" : "object-[50%_40%]";
+    return (
+      <>
+        {/* whole-page watermark: faded photo fixed behind the content */}
+        <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`/api/public/hero?slot=${heroes && heroes[b.slot] ? b.slot : "landing-desktop"}&w=1920&v=${v}`} alt="" onLoad={() => setLoaded(true)}
+            className={`h-full w-full object-cover ${pos} saturate-[.75] transition-opacity duration-1000 ${loaded ? "opacity-[.42]" : "opacity-0"}`} />
+          <div className="absolute inset-0 bg-gradient-to-b from-ivory/35 via-ivory/15 to-ivory/55" />
+        </div>
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4 md:mb-8">
+          <div>
+            <h1 className="font-serif text-[30px] leading-tight tracking-tight md:text-[40px]">{title}</h1>
+            {subtitle && <p className="mt-1 text-muted">{subtitle}</p>}
+          </div>
+          {actions}
+        </div>
+      </>
+    );
+  }
   if (!b || !v) {
     return (
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4 md:mb-8">
