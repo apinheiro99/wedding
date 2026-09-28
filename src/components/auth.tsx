@@ -1,25 +1,42 @@
 "use client";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Footer } from "./Footer";
 
 export function AuthShell({ title, subtitle, step, children }: { title: string; subtitle?: string; step?: string; children: React.ReactNode }) {
+  const [bg, setBg] = useState<number>(0);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    fetch("/api/public/info").then((r) => r.json()).then((d) => setBg(d.heroes?.auth ?? 0)).catch(() => {});
+  }, []);
   return (
-    <main className="min-h-dvh flex flex-col">
-      <header className="px-6 pt-6 md:px-10">
-        <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted hover:text-ink transition">
-          <span aria-hidden>←</span> Voltar
-        </Link>
-      </header>
-      <div className="flex-1 flex items-center justify-center px-6 py-10">
-        <div className="w-full max-w-[400px] fade-up">
-          {step && <p className="text-[12px] uppercase tracking-[0.2em] text-terra mb-3">{step}</p>}
-          <h1 className="font-serif text-[34px] leading-tight tracking-tight">{title}</h1>
-          {subtitle && <p className="mt-2 text-muted leading-relaxed">{subtitle}</p>}
-          <div className="mt-8">{children}</div>
+    <main className="relative min-h-dvh overflow-hidden md:bg-[#1d1a17]">
+      {bg > 0 && (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`/api/public/hero?slot=auth&w=1920&v=${bg}`} alt="" aria-hidden onLoad={() => setLoaded(true)}
+            className={`absolute inset-0 hidden h-full w-full object-cover object-[30%_50%] transition-opacity duration-1000 md:block ${loaded ? "opacity-100" : "opacity-0"}`} />
+          <div aria-hidden className="absolute inset-0 hidden bg-gradient-to-l from-black/35 via-transparent to-transparent md:block" />
+        </>
+      )}
+      <div className={`relative flex min-h-dvh flex-col ${bg > 0 ? "md:items-end" : ""}`}>
+        <div className={`flex min-h-dvh w-full flex-col ${bg > 0 ? "md:m-6 md:min-h-[calc(100dvh-3rem)] md:w-[520px] md:rounded-[28px] md:bg-ivory/92 md:shadow-lift md:backdrop-blur-xl lg:mr-12" : ""}`}>
+          <header className="px-6 pt-6 md:px-10">
+            <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted hover:text-ink transition">
+              <span aria-hidden>←</span> Voltar
+            </Link>
+          </header>
+          <div className="flex flex-1 items-center justify-center px-6 py-10">
+            <div className="w-full max-w-[400px] fade-up">
+              {step && <p className="text-[12px] uppercase tracking-[0.2em] text-terra mb-3">{step}</p>}
+              <h1 className="font-serif text-[34px] leading-tight tracking-tight">{title}</h1>
+              {subtitle && <p className="mt-2 text-muted leading-relaxed">{subtitle}</p>}
+              <div className="mt-8">{children}</div>
+            </div>
+          </div>
+          <Footer className="pb-6" />
         </div>
       </div>
-      <Footer className="pb-6" />
     </main>
   );
 }

@@ -8,7 +8,6 @@ export default function Settings() {
   const [login, setLogin] = useState("");
   const [pwd, setPwd] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
-  const [heroV, setHeroV] = useState(0);
   useEffect(() => { api<{ settings: NonNullable<typeof s> }>("/api/admin/overview").then((o) => { setS(o.settings); setTitle(o.settings.eventTitle); setLogin(o.settings.familyLogin); }); }, []);
   const run = async (fn: () => Promise<unknown>, ok: string) => { setMsg(null); try { await fn(); setMsg(ok); } catch (e) { setMsg(e instanceof ApiError ? e.message : "Erro"); } };
   if (!s) return <div className="skeleton h-64 rounded-2xl" />;
@@ -32,23 +31,7 @@ export default function Settings() {
         <input className="input mt-4" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} />
         <button className="btn-primary btn-sm mt-3">Salvar</button>
       </form>
-      <div className="card p-6 md:col-span-2">
-        <h2 className="font-medium">Imagem de fundo da página inicial</h2>
-        <p className="mt-1 text-sm text-muted">Aparece para quem abre o site, antes do login. Use uma foto na horizontal.</p>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={`/api/public/hero?w=900&t=${heroV}`} alt="" className="mt-4 aspect-[16/7] w-full rounded-xl bg-ivory-deep object-cover" onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} />
-        <div className="mt-3 flex gap-2">
-          <label className="btn-primary btn-sm cursor-pointer">Trocar imagem
-            <input type="file" accept="image/*" hidden onChange={async (e) => {
-              const f = e.target.files?.[0]; if (!f) return;
-              const fd = new FormData(); fd.append("file", f);
-              const r = await fetch("/api/admin/hero", { method: "POST", body: fd, headers: { "x-requested-with": "fetch" } });
-              setMsg(r.ok ? "Imagem de fundo atualizada." : "Não foi possível usar esta imagem."); setHeroV(Date.now());
-            }} />
-          </label>
-          <button className="btn-ghost btn-sm" onClick={async () => { await api("/api/admin/hero", { method: "DELETE" }); setHeroV(Date.now()); setMsg("Imagem removida."); }}>Remover</button>
-        </div>
-      </div>
+      <Backgrounds onMsg={setMsg} />
       <form className="card p-6 md:col-span-2" onSubmit={(e) => { e.preventDefault(); run(async () => { await api("/api/admin/family-credential", { method: "POST", json: { login, password: pwd } }); setPwd(""); }, "Credencial da família alterada."); }}>
         <h2 className="font-medium">Credencial compartilhada da família</h2>
         <p className="mt-1 text-sm text-muted">Usada só no primeiro acesso de cada pessoa. Quem já tem acesso não é afetado.</p>
@@ -58,6 +41,41 @@ export default function Settings() {
         </div>
         <button className="btn-primary btn-sm mt-4">Alterar credencial</button>
       </form>
+    </div>
+  );
+}
+
+function Backgrounds({ onMsg }: { onMsg: (m: string) => void }) {
+  const [d, setD] = useState<{ slots: Record<string, string>; versions: Record<string, number> } | null>(null);
+  const load = () => api<NonNullable<typeof d>>("/api/admin/hero").then(setD);
+  useEffect(() => { load(); }, []);
+  if (!d) return null;
+  return (
+    <div className="card p-6 md:col-span-2">
+      <h2 className="font-medium">Imagens de fundo</h2>
+      <p className="mt-1 text-sm text-muted">Aparecem antes do login. Use fotos na horizontal, compostas para o texto caber no lado indicado.</p>
+      <div className="mt-4 grid gap-4 md:grid-cols-3">
+        {Object.entries(d.slots).map(([slot, label]) => (
+          <div key={slot}>
+            {d.versions[slot]
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={`/api/public/hero?slot=${slot}&w=900&v=${d.versions[slot]}`} alt="" className="aspect-[16/9] w-full rounded-xl object-cover" />
+              : <div className="grid aspect-[16/9] place-items-center rounded-xl bg-ivory-deep text-sm text-muted">sem imagem</div>}
+            <p className="mt-2 text-xs text-muted">{label}</p>
+            <div className="mt-2 flex gap-2">
+              <label className="btn-primary btn-sm cursor-pointer">Trocar
+                <input type="file" accept="image/*" hidden onChange={async (e) => {
+                  const f = e.target.files?.[0]; if (!f) return;
+                  const fd = new FormData(); fd.append("slot", slot); fd.append("file", f);
+                  const r = await fetch("/api/admin/hero", { method: "POST", body: fd, headers: { "x-requested-with": "fetch" } });
+                  onMsg(r.ok ? "Imagem atualizada." : "Não foi possível usar esta imagem."); load();
+                }} />
+              </label>
+              {!!d.versions[slot] && <button className="btn-ghost btn-sm" onClick={async () => { await api(`/api/admin/hero?slot=${slot}`, { method: "DELETE" }); onMsg("Imagem removida."); load(); }}>Remover</button>}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

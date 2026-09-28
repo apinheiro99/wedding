@@ -87,14 +87,60 @@ function UploadEvents() {
   return null;
 }
 
+type Heroes = Record<"landing-desktop" | "landing-mobile" | "auth", number>;
+let heroesCache: Promise<Heroes | null> | null = null;
+function useHeroes() {
+  const [h, setH] = useState<Heroes | null>(null);
+  useEffect(() => {
+    heroesCache ??= fetch("/api/public/info").then((r) => r.json()).then((d) => d.heroes ?? null).catch(() => null);
+    heroesCache.then(setH);
+  }, []);
+  return h;
+}
+
+// Which photo each page uses, and which side the couple stands on (title goes on the other side).
+const BANNERS: { prefix: string; slot: keyof Heroes; couple: "left" | "right" | "center" }[] = [
+  { prefix: "/photos", slot: "landing-desktop", couple: "right" },
+  { prefix: "/albums", slot: "landing-desktop", couple: "right" },
+  { prefix: "/upload", slot: "auth", couple: "left" },
+  { prefix: "/downloads", slot: "landing-mobile", couple: "center" },
+  { prefix: "/account", slot: "auth", couple: "left" },
+];
+
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: React.ReactNode; actions?: React.ReactNode }) {
-  return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4 md:mb-8">
-      <div>
-        <h1 className="font-serif text-[30px] leading-tight tracking-tight md:text-[40px]">{title}</h1>
-        {subtitle && <p className="mt-1 text-muted">{subtitle}</p>}
+  const path = usePathname();
+  const heroes = useHeroes();
+  const b = BANNERS.find((x) => path.startsWith(x.prefix));
+  const v = b && heroes ? heroes[b.slot] || heroes["landing-desktop"] || heroes["landing-mobile"] : 0;
+  const [loaded, setLoaded] = useState(false);
+
+  if (!b || !v) {
+    return (
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4 md:mb-8">
+        <div>
+          <h1 className="font-serif text-[30px] leading-tight tracking-tight md:text-[40px]">{title}</h1>
+          {subtitle && <p className="mt-1 text-muted">{subtitle}</p>}
+        </div>
+        {actions}
       </div>
-      {actions}
+    );
+  }
+  const right = b.couple === "left";
+  const pos = b.couple === "right" ? "object-[70%_35%]" : b.couple === "left" ? "object-[25%_35%]" : "object-[50%_35%]";
+  return (
+    <div className="relative -mx-4 -mt-5 mb-6 overflow-hidden bg-[#2a2520] md:mx-0 md:mt-0 md:mb-8 md:rounded-[28px] md:shadow-soft">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={`/api/public/hero?slot=${heroes && heroes[b.slot] ? b.slot : "landing-desktop"}&w=1920&v=${v}`} alt="" aria-hidden onLoad={() => setLoaded(true)}
+        className={`absolute inset-0 h-full w-full object-cover ${pos} transition duration-1000 ${loaded ? "scale-100 opacity-100" : "scale-105 opacity-0"}`} />
+      <div aria-hidden className={`absolute inset-0 ${right ? "bg-gradient-to-l" : "bg-gradient-to-r"} from-black/65 via-black/25 to-transparent`} />
+      <div aria-hidden className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/55 to-transparent" />
+      <div className={`relative flex min-h-[190px] flex-col justify-end gap-4 px-5 pb-5 pt-16 text-white md:min-h-[260px] md:px-9 md:pb-8 ${right ? "md:items-end md:text-right" : ""}`}>
+        <div>
+          <h1 className="font-serif text-[34px] leading-tight tracking-tight drop-shadow-sm md:text-[52px]">{title}</h1>
+          {subtitle && <div className="mt-1 text-white/85">{subtitle}</div>}
+        </div>
+        {actions && <div className={right ? "md:self-end" : ""}>{actions}</div>}
+      </div>
     </div>
   );
 }

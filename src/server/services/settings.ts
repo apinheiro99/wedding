@@ -7,6 +7,7 @@ export type Settings = {
   notifications_enabled: boolean;
   event_title: string;
   hero_version: number;
+  hero_versions: Record<string, number>;
 };
 
 export async function getSetting<K extends keyof Settings>(key: K, q: Queryable = db()): Promise<Settings[K] | undefined> {
