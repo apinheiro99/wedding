@@ -84,7 +84,7 @@ export function Gallery({ uploader, order, onCounts }: { uploader?: string | nul
         {groups.map((g) => (
           <section key={g.key} aria-label={g.label}>
             <div className="sticky top-14 md:top-16 z-10 -mx-4 mb-3 flex items-center justify-between bg-ivory/90 px-4 py-2 backdrop-blur md:-mx-8 md:px-8">
-              <h2 className="text-[13px] font-medium capitalize text-ink/80">{g.label}</h2>
+              <h2 className="text-[13px] font-medium text-ink/80 first-letter:uppercase">{g.label}</h2>
               <span className="text-xs text-muted">{g.items.length}</span>
             </div>
             <div className="grid grid-cols-3 gap-1 sm:grid-cols-4 md:grid-cols-5 md:gap-2 lg:grid-cols-6 xl:grid-cols-7">

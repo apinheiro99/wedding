@@ -1,0 +1,44 @@
+name: ci
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env: { POSTGRES_PASSWORD: ci-password }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+        env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg libheif-examples libvips-tools unzip
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run test:unit
+      - run: npm run test:int
+        env: { PG_TEST_HOST: localhost, PG_TEST_PASSWORD: ci-password }
+      - run: npm run build
+        env:
+          PG_HOST: localhost
+          PG_USER: postgres
+          PG_PASSWORD: ci-password
+          PG_APP_DB: wedding_build
+          STORAGE_ROOT: /tmp/storage
+          SESSION_SECRET: ci-secret-ci-secret-ci-secret-ci-secret
+          FAMILY_BOOTSTRAP_LOGIN: familia
+          FAMILY_BOOTSTRAP_PASSWORD: ci-family
+          ADMIN_EMAIL: admin@example.com
+          ADMIN_BOOTSTRAP_PASSWORD: ci-admin-password
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t wedding-photos .

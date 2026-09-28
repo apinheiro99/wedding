@@ -1,0 +1,32 @@
+# Production-style stack. Secrets come from .env (never committed).
+# Storage: bind-mount the TrueNAS dataset (NFS) at /storage.
+services:
+  web:
+    build: .
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      STORAGE_ROOT: /storage
+    volumes:
+      - ${STORAGE_HOST_PATH:-./storage}:/storage
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  worker:
+    build: .
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      STORAGE_ROOT: /storage
+    command: ["npx", "tsx", "src/worker/main.ts"]
+    volumes:
+      - ${STORAGE_HOST_PATH:-./storage}:/storage
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy

@@ -1,0 +1,10 @@
+node_modules
+.next
+storage
+temp
+.env
+.env.*
+.git
+incus_*.yaml
+tests/fixtures
+*.log
