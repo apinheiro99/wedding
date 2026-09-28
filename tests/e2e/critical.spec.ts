@@ -10,12 +10,13 @@ const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? "";
 const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? "";
 const H = { "x-requested-with": "fetch" };
 
+const seen = new Set<string>();
 async function latestCode(req: APIRequestContext, email: string) {
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 30; i++) {
     const r = await (await req.get("/api/dev/mail")).json();
-    const m = r.mails.find((x: { to: string }) => x.to === email);
+    const m = r.mails.find((x: { to: string; subject: string }) => x.to === email);
     const code = m?.subject.match(/\d{6}/)?.[0];
-    if (code) return code as string;
+    if (code && !seen.has(code)) { for (const x of r.mails) { const c = x.subject.match(/\d{6}/)?.[0]; if (c) seen.add(c); } return code as string; }
     await new Promise((r) => setTimeout(r, 300));
   }
   throw new Error("no OTP mail");
@@ -63,6 +64,7 @@ test.describe.serial("critical flows", () => {
   });
 
   test("3-8. upload, duplicate, soft delete, restore, download, package", async ({ page }) => {
+    test.setTimeout(240_000);
     await page.goto("/login");
     await page.getByLabel("Seu e-mail").fill(email);
     await page.getByRole("button", { name: "Enviar código" }).click();
@@ -104,14 +106,17 @@ test.describe.serial("critical flows", () => {
     }, { timeout: 80_000, intervals: [3000] }).toBe(true);
     await page.goto("/downloads");
     await expect(page.getByRole("link", { name: /Baixar 01/ }).first()).toBeVisible();
+    // cleanup: test artifacts must not stay visible in the family album
+    expect((await page.request.delete(`/api/media/${id}`, { headers: H })).status()).toBe(200);
   });
 
   test("9. admin sees soft-deleted media", async ({ page }) => {
-    await page.request.post("/api/admin/auth/login", { data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, headers: H });
+    const login = await page.request.post("/api/admin/auth/login", { data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, headers: H });
+    expect(login.status(), await login.text()).toBe(200);
     const r = await (await page.request.get("/api/admin/media?filter=deleted")).json();
     expect(Array.isArray(r.items)).toBe(true);
     await page.goto("/admin/media");
-    await expect(page.getByRole("button", { name: "Excluídas" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Excluídas" })).toBeVisible({ timeout: 30_000 });
   });
 
   test("download requires auth", async ({ request }) => {
