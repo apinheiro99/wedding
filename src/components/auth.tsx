@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRef, useState } from "react";
+import { Footer } from "./Footer";
 
 export function AuthShell({ title, subtitle, step, children }: { title: string; subtitle?: string; step?: string; children: React.ReactNode }) {
   return (
@@ -18,6 +19,7 @@ export function AuthShell({ title, subtitle, step, children }: { title: string; 
           <div className="mt-8">{children}</div>
         </div>
       </div>
+      <Footer className="pb-6" />
     </main>
   );
 }

@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { MeContext, type Me } from "@/lib/me";
+import { Footer } from "./Footer";
 
 const NAV = [
   { href: "/photos", label: "Fotos", icon: "M4 5h16v14H4z M4 15l4-4 4 4 3-3 5 5 M15 9h.01" },
@@ -51,7 +52,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {me.isAdmin && <Link href="/admin" className="md:hidden rounded-full px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-amber bg-amber-soft">Admin</Link>}
         </div>
       </header>
-      <main className="mx-auto max-w-7xl px-4 pb-28 pt-5 md:px-8 md:pb-16 md:pt-8">{children}</main>
+      <main className="mx-auto max-w-7xl px-4 pb-10 pt-5 md:px-8 md:pt-8 min-h-[70dvh]">{children}</main>
+      <Footer className="pb-28 md:pb-10" />
       <nav aria-label="Principal" className="md:hidden fixed inset-x-0 bottom-0 z-30 border-t border-line/70 bg-card/95 backdrop-blur-md pb-safe">
         <div className="grid grid-cols-4">
           {NAV.map((n) => {

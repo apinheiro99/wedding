@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { Footer } from "@/components/Footer";
 
 type Info = { eventTitle: string; motto: string; subtitle: string };
 
@@ -44,6 +45,7 @@ export default function Landing() {
         <p className="fade-up mt-10 text-xs text-muted/80" style={{ animationDelay: "320ms" }}>
           Álbum privado da família · os arquivos originais são preservados.
         </p>
+        <Footer className="fade-up mt-6 !text-left" />
       </div>
     </main>
   );
