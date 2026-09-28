@@ -17,7 +17,7 @@ const schema = z.object({
   FAMILY_BOOTSTRAP_LOGIN: z.string().min(1),
   FAMILY_BOOTSTRAP_PASSWORD: z.string().min(6),
   ADMIN_EMAIL: z.string().email().transform((s) => s.toLowerCase()),
-  ADMIN_BOOTSTRAP_PASSWORD: z.string().min(12),
+  ADMIN_BOOTSTRAP_PASSWORD: z.string().min(8),
   EMAIL_PROVIDER: z.enum(["dev", "memory", "resend"]).default("dev"),
   EMAIL_FROM: z.string().default("Fotos <fotos@example.com>"),
   RESEND_API_KEY: z.string().optional(),
