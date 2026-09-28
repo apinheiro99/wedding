@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ivory: #f7f3ee;
+  --color-ivory-deep: #efe8df;
+  --color-card: #ffffff;
+  --color-ink: #24211f;
+  --color-muted: #6f6964;
+  --color-line: #e6ded4;
+  --color-terra: #b86f59;
+  --color-terra-dark: #9c5a46;
+  --color-terra-soft: #f3e3dc;
+  --color-sage: #7e8b78;
+  --color-sage-soft: #e7ebe4;
+  --color-amber: #b9853b;
+  --color-amber-soft: #f5ead8;
+  --color-danger: #a84e46;
+  --color-danger-soft: #f4e1de;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-serif-display), ui-serif, Georgia, serif;
+  --shadow-soft: 0 1px 2px rgb(36 33 31 / 0.04), 0 8px 24px -12px rgb(36 33 31 / 0.12);
+  --shadow-lift: 0 2px 4px rgb(36 33 31 / 0.05), 0 20px 40px -20px rgb(36 33 31 / 0.25);
+}
+
+html { background: var(--color-ivory); color: var(--color-ink); -webkit-tap-highlight-color: transparent; }
+body { min-height: 100dvh; font-feature-settings: "cv11", "ss01"; }
+:focus-visible { outline: 2px solid var(--color-terra); outline-offset: 2px; border-radius: 6px; }
+::selection { background: var(--color-terra-soft); }
+
+@utility btn { @apply inline-flex items-center justify-center gap-2 rounded-full px-5 h-11 text-[15px] font-medium transition active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none; }
+@utility btn-primary { @apply btn bg-terra text-white hover:bg-terra-dark shadow-soft; }
+@utility btn-ghost { @apply btn bg-card text-ink border border-line hover:border-ink/20; }
+@utility btn-sm { @apply h-9 px-4 text-sm; }
+@utility input { @apply w-full h-12 rounded-xl border border-line bg-card px-4 text-[16px] outline-none transition focus:border-terra focus:ring-4 focus:ring-terra/10 placeholder:text-muted/60; }
+@utility card { @apply bg-card rounded-2xl border border-line/70 shadow-soft; }
+@utility label { @apply block text-[13px] font-medium text-muted mb-1.5; }
+
+@keyframes fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.fade-up { animation: fade-up .5s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+.skeleton { background: linear-gradient(90deg, #efe8df 0%, #f7f3ee 50%, #efe8df 100%); background-size: 800px 100%; animation: shimmer 1.4s linear infinite; }
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }

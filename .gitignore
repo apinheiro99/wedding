@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+coverage/
+storage/
+*.log
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+.DS_Store
+test-results/
+playwright-report/
+incus_*.yaml
