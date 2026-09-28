@@ -8,5 +8,6 @@ export async function publicInfo() {
     eventTitle: (await getSetting("event_title")) ?? config().EVENT_TITLE,
     motto: "As fotos de todo mundo, em um só lugar.",
     subtitle: "Envie as suas. Baixe as de todo mundo. Sem perder o original.",
+    heroVersion: (await getSetting("hero_version")) ?? 0,
   };
 }

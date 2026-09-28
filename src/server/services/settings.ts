@@ -6,6 +6,7 @@ export type Settings = {
   family_password_hash: string;
   notifications_enabled: boolean;
   event_title: string;
+  hero_version: number;
 };
 
 export async function getSetting<K extends keyof Settings>(key: K, q: Queryable = db()): Promise<Settings[K] | undefined> {
