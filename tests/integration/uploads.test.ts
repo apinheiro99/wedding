@@ -5,7 +5,7 @@ import { setupHarness, type Harness } from "./harness";
 import { db } from "@/server/db";
 import { abs, userFolderName } from "@/server/storage";
 import { createUpload, appendChunk, checkHash } from "@/server/services/uploads";
-import { finalizeUpload, softDelete } from "@/server/services/media";
+import { finalizeUpload, softDelete, bulkSoftDelete } from "@/server/services/media";
 
 let h: Harness;
 let userId: string;
@@ -132,5 +132,55 @@ describe("upload lifecycle", () => {
 
     const afterRestore = await db().query("SELECT deleted_at FROM media WHERE id = $1", [media.id]);
     expect(afterRestore.rows[0].deleted_at).toBeNull();
+  });
+
+  it("bulk delete: removes the caller's own items, skips someone else's and an unknown id, is idempotent", async () => {
+    const other = await db().query(
+      `WITH id AS (SELECT gen_random_uuid() AS id)
+       INSERT INTO users (id, email, display_name, folder_name, email_verified_at)
+       SELECT id, 'bulk-other@example.com', 'Other User', $1, now() FROM id RETURNING id`,
+      [userFolderName("Other User", "other")],
+    );
+    const otherId = other.rows[0].id;
+
+    const mine: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      const up = await uploadWholeFile(`bulk-${i}.jpg`, crypto.randomBytes(50));
+      await finalizeUpload(up.id);
+      mine.push((await db().query("SELECT id FROM media WHERE uploader_user_id = $1 AND original_filename = $2", [userId, `bulk-${i}.jpg`])).rows[0].id);
+    }
+    const upOther = await createUpload(otherId, { filename: "not-yours.jpg", size: 40 });
+    await appendChunk(otherId, upOther.id, 0, new Blob([new Uint8Array(crypto.randomBytes(40))]).stream() as any);
+    await finalizeUpload(upOther.id);
+    const foreignId = (await db().query("SELECT id FROM media WHERE uploader_user_id = $1", [otherId])).rows[0].id;
+    const unknownId = crypto.randomUUID();
+
+    const r = await bulkSoftDelete([...mine, foreignId, unknownId], { id: userId, isAdmin: false });
+    expect(r.deleted.sort()).toEqual([...mine].sort());
+    expect(r.skipped).toBe(2); // foreign (not owner) + unknown
+
+    const rows = (await db().query("SELECT id, deleted_at FROM media WHERE id = ANY($1::uuid[])", [[...mine, foreignId]])).rows;
+    expect(rows.filter((x) => mine.includes(x.id)).every((x) => x.deleted_at !== null)).toBe(true);
+    expect(rows.find((x) => x.id === foreignId)!.deleted_at).toBeNull();
+
+    // running again on the same (now already-deleted) ids deletes nothing new
+    const again = await bulkSoftDelete(mine, { id: userId, isAdmin: false });
+    expect(again.deleted).toEqual([]);
+    expect(again.skipped).toBe(mine.length);
+  });
+
+  it("bulk delete: admin can delete anyone's media", async () => {
+    const admin = await db().query(
+      `WITH id AS (SELECT gen_random_uuid() AS id)
+       INSERT INTO users (id, email, display_name, role, folder_name, email_verified_at)
+       SELECT id, 'bulk-admin@example.com', 'Admin', 'ADMIN', $1, now() FROM id RETURNING id`,
+      [userFolderName("Admin", "bulkadmin")],
+    );
+    const up = await uploadWholeFile("admin-can-delete.jpg", crypto.randomBytes(30));
+    await finalizeUpload(up.id);
+    const mediaId = (await db().query("SELECT id FROM media WHERE uploader_user_id = $1 AND original_filename = 'admin-can-delete.jpg'", [userId])).rows[0].id;
+    const r = await bulkSoftDelete([mediaId], { id: admin.rows[0].id, isAdmin: true });
+    expect(r.deleted).toEqual([mediaId]);
+    expect(r.skipped).toBe(0);
   });
 });

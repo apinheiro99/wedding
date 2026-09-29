@@ -138,6 +138,35 @@ export async function softDelete(mediaId: string, actor: { id: string; isAdmin: 
   });
 }
 
+/** Bulk soft delete (e.g. a shift-click range in the gallery). Same rules as softDelete, per item:
+ * items the actor cannot delete are skipped rather than failing the whole batch. */
+export async function bulkSoftDelete(mediaIds: string[], actor: { id: string; isAdmin: boolean }) {
+  const ids = [...new Set(mediaIds)].filter((id) => /^[0-9a-f-]{36}$/.test(id)).slice(0, 1000);
+  if (!ids.length) return { deleted: [] as string[], skipped: 0 };
+  const result = await tx(async (c) => {
+    const r = await c.query(
+      "SELECT id, uploader_user_id, package_id, deleted_at FROM media WHERE id = ANY($1::uuid[]) FOR UPDATE",
+      [ids],
+    );
+    const deleted: { id: string; userId: string; packageId: string | null }[] = [];
+    for (const m of r.rows) {
+      if (m.deleted_at) continue;
+      if (m.uploader_user_id !== actor.id && !actor.isAdmin) continue;
+      await c.query("UPDATE media SET deleted_at = now(), deleted_by = $2, updated_at = now() WHERE id = $1", [m.id, actor.id]);
+      deleted.push({ id: m.id, userId: m.uploader_user_id, packageId: m.package_id });
+    }
+    if (deleted.length) {
+      await c.query("INSERT INTO audit_events (type, user_id, data) VALUES ('MEDIA_DELETED', $1, $2)", [actor.id, { mediaIds: deleted.map((d) => d.id), bulk: true }]);
+      const packages = new Set(deleted.map((d) => d.packageId).filter((p): p is string => !!p));
+      for (const packageId of packages) await markDirty(c, packageId, "DELETE");
+      for (const d of deleted) await publish({ t: "media", mediaId: d.id, userId: d.userId, change: "deleted" }, c);
+    }
+    return { deleted: deleted.map((d) => d.id), skipped: ids.length - deleted.length };
+  });
+  log.info("media.bulk_deleted", { requested: ids.length, deleted: result.deleted.length, skipped: result.skipped, byAdmin: actor.isAdmin });
+  return result;
+}
+
 // ---------- queries ----------
 
 export type ListOpts = { order: "asc" | "desc"; uploader?: string | null; cursor?: string | null; limit: number; includeDeleted?: boolean; onlyDeleted?: boolean };
