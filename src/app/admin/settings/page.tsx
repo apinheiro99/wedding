@@ -3,12 +3,14 @@ import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 
 export default function Settings() {
-  const [s, setS] = useState<{ notificationsEnabled: boolean; eventTitle: string; familyLogin: string } | null>(null);
+  const [s, setS] = useState<{ notificationsEnabled: boolean; eventTitle: string; familyLogin: string; logLevel: string | null; logRetainDays: number } | null>(null);
+  const [logLevel, setLogLevel] = useState("");
+  const [retain, setRetain] = useState(7);
   const [title, setTitle] = useState("");
   const [login, setLogin] = useState("");
   const [pwd, setPwd] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
-  useEffect(() => { api<{ settings: NonNullable<typeof s> }>("/api/admin/overview").then((o) => { setS(o.settings); setTitle(o.settings.eventTitle); setLogin(o.settings.familyLogin); }); }, []);
+  useEffect(() => { api<{ settings: NonNullable<typeof s> }>("/api/admin/overview").then((o) => { setS(o.settings); setTitle(o.settings.eventTitle); setLogin(o.settings.familyLogin); setLogLevel(o.settings.logLevel ?? ""); setRetain(o.settings.logRetainDays); }); }, []);
   const run = async (fn: () => Promise<unknown>, ok: string) => { setMsg(null); try { await fn(); setMsg(ok); } catch (e) { setMsg(e instanceof ApiError ? e.message : "Erro"); } };
   if (!s) return <div className="skeleton h-64 rounded-2xl" />;
   return (
@@ -29,6 +31,20 @@ export default function Settings() {
         <h2 className="font-medium">Título do evento</h2>
         <p className="mt-1 text-sm text-muted">Aparece na página inicial.</p>
         <input className="input mt-4" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} />
+        <button className="btn-primary btn-sm mt-3">Salvar</button>
+      </form>
+      <form className="card p-6" onSubmit={(e) => { e.preventDefault(); run(() => api("/api/admin/settings", { method: "PATCH", json: { ...(logLevel ? { logLevel } : {}), logRetainDays: retain } }), "Configuração de logs salva."); }}>
+        <h2 className="font-medium">Logs</h2>
+        <p className="mt-1 text-sm text-muted">Um arquivo por dia. Arquivos mais antigos que o prazo são apagados. Vale para o site e para o worker em até 1 minuto.</p>
+        <label className="mt-4 block text-sm">Nível
+          <select className="input mt-1" value={logLevel} onChange={(e) => setLogLevel(e.target.value)}>
+            <option value="">Padrão do servidor</option>
+            {["trace", "debug", "info", "warn", "error"].map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+        </label>
+        <label className="mt-3 block text-sm">Guardar por (dias)
+          <input className="input mt-1" type="number" min={1} max={365} value={retain} onChange={(e) => setRetain(Math.max(1, Number(e.target.value) || 1))} />
+        </label>
         <button className="btn-primary btn-sm mt-3">Salvar</button>
       </form>
       <Backgrounds onMsg={setMsg} />

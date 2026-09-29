@@ -41,7 +41,7 @@ export function provider(): EmailProvider {
 
 async function send(m: Mail) {
   try { await provider().send(m); log.info("email.sent", { subject: m.subject }); }
-  catch (e) { log.error("email.failed", { subject: m.subject, error: (e as Error).message }); throw e; }
+  catch (e) { log.error("email.failed", { subject: m.subject, err: e }); throw e; }
 }
 
 const wrap = (body: string) => `<div style="font-family:Inter,system-ui,sans-serif;background:#F7F3EE;padding:32px"><div style="max-width:480px;margin:auto;background:#fff;border-radius:16px;padding:32px;color:#24211F">${body}</div></div>`;

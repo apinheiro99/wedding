@@ -16,3 +16,4 @@ playwright-report/
 incus_*.yaml
 *.tsbuildinfo
 temp/
+logs/

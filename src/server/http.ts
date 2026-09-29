@@ -15,16 +15,31 @@ type Handler<C> = (req: Request, ctx: C) => Promise<Response>;
 export function handle<C = unknown>(fn: Handler<C>): Handler<C> {
   return async (req, ctx) => {
     const rid = req.headers.get("x-request-id") ?? crypto.randomUUID().slice(0, 8);
+    const t0 = Date.now();
+    const path = new URL(req.url).pathname;
+    const l = log.child("http", { rid, method: req.method, path });
+    const done = (status: number) => {
+      const ms = Date.now() - t0;
+      const d = { status, ms, ip: req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for") ?? undefined };
+      if (status >= 500) l.error("request", d);
+      else if (status >= 400) l.warn("request", d);
+      else if (ms > 2000) l.warn("request.slow", d);
+      else l.debug("request", d);
+    };
     try {
       if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) checkCsrf(req);
       const res = await fn(req, ctx);
       res.headers.set("x-request-id", rid);
+      done(res.status);
       return res;
     } catch (e) {
       if (e instanceof HttpError) {
+        l.debug("http_error", { code: e.code, reason: e.message });
+        done(e.status);
         return Response.json({ error: e.code, message: e.message }, { status: e.status, headers: { "x-request-id": rid } });
       }
-      log.error("http.unhandled", { rid, path: new URL(req.url).pathname, error: (e as Error).message, stack: (e as Error).stack });
+      l.error("unhandled", { err: e });
+      done(500);
       return Response.json({ error: "INTERNAL", message: "Erro interno. Tente novamente." }, { status: 500, headers: { "x-request-id": rid } });
     }
   };

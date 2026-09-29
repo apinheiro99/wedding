@@ -7,6 +7,7 @@ services:
     environment:
       NODE_ENV: production
       STORAGE_ROOT: /storage
+      LOG_DIR: /storage/logs
     volumes:
       - ${STORAGE_HOST_PATH:-./storage}:/storage
     ports:
@@ -23,6 +24,7 @@ services:
     environment:
       NODE_ENV: production
       STORAGE_ROOT: /storage
+      LOG_DIR: /storage/logs
     command: ["npx", "tsx", "src/worker/main.ts"]
     volumes:
       - ${STORAGE_HOST_PATH:-./storage}:/storage

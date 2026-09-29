@@ -1,7 +1,8 @@
 import { db } from "../db";
 import { badRequest, notFound } from "../http";
 import { adminStats } from "./notifications";
-import { getSetting, setSetting } from "./settings";
+import { getSetting, setSetting, type Settings } from "./settings";
+import { applyLogSettings } from "./logsettings";
 import { markDirty } from "./packages";
 
 export async function overview() {
@@ -9,7 +10,7 @@ export async function overview() {
   const pk = await db().query("SELECT state, count(*)::int AS n FROM packages GROUP BY state");
   return {
     stats, packages: Object.fromEntries(pk.rows.map((r) => [r.state, r.n])),
-    settings: { notificationsEnabled: (await getSetting("notifications_enabled")) ?? true, eventTitle: await getSetting("event_title"), familyLogin: await getSetting("family_login") },
+    settings: { notificationsEnabled: (await getSetting("notifications_enabled")) ?? true, eventTitle: await getSetting("event_title"), familyLogin: await getSetting("family_login"), logLevel: (await getSetting("log_level")) ?? null, logRetainDays: (await getSetting("log_retain_days")) ?? 7 },
   };
 }
 
@@ -59,7 +60,10 @@ export async function rebuildPackage(id: string) {
   await markDirty(db(), id, "ADD");
 }
 
-export async function updateSettings(p: { notificationsEnabled?: boolean; eventTitle?: string }) {
+export async function updateSettings(p: { notificationsEnabled?: boolean; eventTitle?: string; logLevel?: Settings["log_level"]; logRetainDays?: number }) {
+  if (p.logLevel !== undefined) await setSetting("log_level", p.logLevel);
+  if (p.logRetainDays !== undefined) await setSetting("log_retain_days", p.logRetainDays);
+  if (p.logLevel !== undefined || p.logRetainDays !== undefined) await applyLogSettings();
   if (p.notificationsEnabled !== undefined) await setSetting("notifications_enabled", p.notificationsEnabled);
   if (p.eventTitle !== undefined) {
     const t = p.eventTitle.trim();

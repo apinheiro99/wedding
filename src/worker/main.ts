@@ -5,7 +5,11 @@ import { processMedia } from "../server/services/processing";
 import { buildPackage } from "../server/services/packages";
 import { runCleanup, runDailyReport, runDigest } from "../server/services/notifications";
 import { db } from "../server/db";
-import { log } from "../server/log";
+import { watchLogSettings } from "../server/services/logsettings";
+import { installProcessHandlers, log as rootLog } from "../server/log";
+
+const log = rootLog.child("worker");
+installProcessHandlers("worker");
 
 const CONCURRENCY = Number(process.env.WORKER_CONCURRENCY ?? 3);
 let stopping = false;
@@ -26,15 +30,16 @@ async function loop(slot: number) {
   const types = slot === 0 ? (["FINALIZE_UPLOAD", "MEDIA_PROCESS", "DIGEST", "DAILY_REPORT", "CLEANUP"] as const) : null;
   while (!stopping) {
     let job: Job | null = null;
-    try { job = await claim(types ? [...types] : null); } catch (e) { log.error("worker.claim_failed", { error: (e as Error).message }); }
+    try { job = await claim(types ? [...types] : null); } catch (e) { log.error("worker.claim_failed", { err: e }); }
     if (!job) { await sleep(1000); continue; }
     const t0 = Date.now();
+    log.debug("job.start", { slot, job: job.id, type: job.type, attempt: job.attempts });
     try {
       const result = await execute(job);
       await complete(job.id);
       log.info("job.done", { job: job.id, type: job.type, ms: Date.now() - t0, result: typeof result === "string" ? result : undefined });
     } catch (e) {
-      log.error("job.failed", { job: job.id, type: job.type, attempt: job.attempts, error: (e as Error).message });
+      log.error("job.failed", { job: job.id, type: job.type, attempt: job.attempts, ms: Date.now() - t0, err: e });
       await fail(job, (e as Error).message).catch(() => {});
     }
   }
@@ -50,7 +55,7 @@ async function scheduler() {
       // recover finalize jobs lost to a crash between state change and enqueue
       const orphan = await db().query("SELECT id FROM uploads WHERE state IN ('VERIFYING','FINALIZING') AND updated_at < now() - interval '10 minutes'");
       for (const o of orphan.rows) await enqueue("FINALIZE_UPLOAD", { uploadId: o.id }, { dedupeKey: `finalize:${o.id}`, priority: 10 });
-    } catch (e) { log.error("scheduler.failed", { error: (e as Error).message }); }
+    } catch (e) { log.error("scheduler.failed", { err: e }); }
     await sleep(30_000);
   }
 }
@@ -59,6 +64,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
   await ensureBooted();
+  watchLogSettings();
   log.info("worker.started", { concurrency: CONCURRENCY });
   process.on("SIGTERM", () => { stopping = true; });
   process.on("SIGINT", () => { stopping = true; });
@@ -66,4 +72,4 @@ async function main() {
   await db().end();
 }
 
-main().catch((e) => { log.error("worker.fatal", { error: (e as Error).message }); process.exit(1); });
+main().catch((e) => { log.fatal("worker.fatal", { err: e }); process.exit(1); });

@@ -63,7 +63,7 @@ async function videoMeta(file: string): Promise<Meta> {
       make: tags["com.apple.quicktime.make"] ?? null, model: tags["com.apple.quicktime.model"] ?? null,
     };
   } catch (e) {
-    log.warn("ffprobe.failed", { error: (e as Error).message.slice(0, 200) });
+    log.warn("ffprobe.failed", { err: e });
     return {};
   }
 }
@@ -118,7 +118,7 @@ export async function processMedia(mediaId: string) {
       thumbState = "READY";
     }
   } catch (e) {
-    log.warn("thumbnail.failed", { mediaId, error: (e as Error).message.slice(0, 300) });
+    log.warn("thumbnail.failed", { mediaId, err: e });
   } finally {
     await fsp.rm(tmpDir, { recursive: true, force: true }).catch(() => {}); // NFS may briefly keep .nfs* files
   }

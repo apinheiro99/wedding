@@ -8,6 +8,8 @@ export type Settings = {
   event_title: string;
   hero_version: number;
   hero_versions: Record<string, number>;
+  log_level: "trace" | "debug" | "info" | "warn" | "error";
+  log_retain_days: number;
 };
 
 export async function getSetting<K extends keyof Settings>(key: K, q: Queryable = db()): Promise<Settings[K] | undefined> {

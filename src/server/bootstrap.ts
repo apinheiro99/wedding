@@ -39,7 +39,7 @@ export function ensureBooted(): Promise<void> {
   if (!g.__weddingBoot) {
     g.__weddingBoot = run().catch((e) => {
       g.__weddingBootError = (e as Error).message;
-      log.error("bootstrap.failed", { error: (e as Error).message });
+      log.error("bootstrap.failed", { err: e });
       g.__weddingBoot = undefined; // allow a later retry
       throw e;
     });
