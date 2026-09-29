@@ -25,7 +25,11 @@ export function VerifyStep({ email, onResend, onBack }: { email: string; onResen
 
   return (
     <div>
-      <p className="mb-6 text-muted">Enviamos um código de 6 dígitos para <b className="text-ink">{email}</b>.</p>
+      <p className="mb-4 text-muted">Enviamos um código de 6 dígitos para <b className="text-ink">{email}</b>.</p>
+      <p role="note" className="mb-6 flex items-start gap-2 rounded-xl bg-amber-soft px-4 py-3 text-sm text-ink">
+        <svg viewBox="0 0 24 24" className="mt-0.5 h-4 w-4 shrink-0 text-amber" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M4 6h16v12H4z M4 7l8 6 8-6" /></svg>
+        <span>Não chegou? Olhe também a caixa de <b>spam</b> ou <b>lixo eletrônico</b>. Pode levar até 1 minuto.</span>
+      </p>
       <OtpInput key={key} onComplete={verify} disabled={busy} />
       {busy && <p className="mt-4 flex items-center gap-2 text-sm text-muted"><Spinner /> Verificando…</p>}
       <ErrorNote msg={err} />
