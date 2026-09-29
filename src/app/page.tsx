@@ -35,7 +35,7 @@ export default function Landing() {
         <div className="md:max-w-[560px]">
           <p className={`fade-up text-[13px] uppercase tracking-[0.22em] ${hero ? "text-muted md:text-white/75" : "text-muted"}`}>{info?.eventTitle ?? " "}</p>
           <h1 className="fade-up mt-4 font-serif text-[42px] leading-[1.04] tracking-tight md:text-[68px]" style={{ animationDelay: "80ms" }}>
-            Nosso dia, <em className={`not-italic md:italic ${hero ? "text-terra md:text-[#f3cbb9]" : "text-terra"}`}>pelos olhos de todos.</em>
+            Nosso dia, <em className={`not-italic md:italic ${hero ? "text-terra md:text-[#f3cbb9]" : "text-terra"}`}>por todos os olhares.</em>
           </h1>
           <p className={`fade-up mt-5 max-w-md text-[17px] leading-relaxed ${hero ? "text-muted md:text-white/85" : "text-muted"}`} style={{ animationDelay: "160ms" }}>
             {info?.subtitle ?? "Envie suas fotos e veja as lembranças que cada pessoa guardou desse dia."}

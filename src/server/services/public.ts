@@ -7,7 +7,7 @@ export async function publicInfo() {
   await ensureBooted();
   return {
     eventTitle: (await getSetting("event_title")) ?? config().EVENT_TITLE,
-    motto: "Nosso dia, pelos olhos de todos.",
+    motto: "Nosso dia, por todos os olhares.",
     subtitle: "Envie suas fotos e veja as lembranças que cada pessoa guardou desse dia.",
     heroes: await heroVersions(),
   };
