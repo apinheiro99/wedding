@@ -160,6 +160,7 @@ Copy [`.env.example`](.env.example). Configuration is validated at startup and t
 | `SESSION_SECRET` | ≥ 32 random chars. **Production refuses placeholder values.** |
 | `FAMILY_BOOTSTRAP_LOGIN` / `FAMILY_BOOTSTRAP_PASSWORD` | Shared guest credential, created on first boot (change it later in the admin). |
 | `ADMIN_EMAIL` / `ADMIN_BOOTSTRAP_PASSWORD` | Admin account, created on first boot. |
+| `ADMIN_TUNNEL_SECRET` | Optional, ≥ 16 chars. Stronger LAN-only enforcement for `/admin` — see [Keep `/admin` private](#keep-admin-private-lan-only). |
 | `REPORT_EMAIL` | Recipient of the daily admin report (a real, deliverable address). Default only: it can be changed in *Admin → Settings → Relatório diário*. Falls back to `ADMIN_EMAIL`; addresses ending in `.local` are skipped. |
 | `EMAIL_PROVIDER` | `dev`, `memory` (tests) or `resend`. |
 | `EMAIL_FROM` | e.g. `Photos <noreply@photos.example.com>` — must belong to a domain verified in Resend. |
@@ -201,10 +202,17 @@ sudo apt install cloudflared
 
 ### Keep `/admin` private (LAN only)
 
-The app itself refuses `/admin/*` and `/api/admin/*` when a request arrives through Cloudflare (the tunnel always adds
-`cf-ray` / `cf-connecting-ip`; see [`src/middleware.ts`](src/middleware.ts)). Reach the admin from your local network
-directly: `http://<server-lan-ip>:3000/admin`. Do not expose port 3000 to the internet by any other path (port-forwarding, a
-second tunnel hostname, a reverse proxy that strips those headers), or this protection no longer holds.
+The app itself refuses `/admin/*` and `/api/admin/*` when a request arrives through Cloudflare. By default (no extra
+config) it does this by checking for `cf-ray` / `cf-connecting-ip`, which the tunnel always adds and an internet client
+reaching the origin directly cannot forge (see [`src/middleware.ts`](src/middleware.ts)). Reach the admin from your local
+network directly: `http://<server-lan-ip>:3000/admin`. Do not expose port 3000 to the internet by any other path
+(port-forwarding, a second tunnel hostname, a reverse proxy that strips those headers), or this protection no longer holds.
+
+**Stronger, opt-in mode:** set `ADMIN_TUNNEL_SECRET` (≥ 16 random chars, `openssl rand -hex 16`) and configure your
+Cloudflare Tunnel's ingress rule for that hostname to inject a `x-tunnel-auth: <same value>` request header
+(`originRequest.httpHeaders` in the tunnel config, or an Access header rule). With the secret set, `/admin` and
+`/api/admin` require that exact header instead of trusting header *presence* — closing the (mostly theoretical) gap where
+someone reaches the origin directly and forges `cf-*` headers themselves. Leave it unset to keep the simpler default above.
 
 ## 5. E-mail with Resend
 
