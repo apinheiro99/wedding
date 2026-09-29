@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import os from "node:os";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { randomBytes } from "node:crypto";
 import { loadConfig } from "@/server/config";
 import { serveFile } from "@/server/files";
 import { log } from "@/server/log";
@@ -10,7 +11,9 @@ const base = {
   PG_HOST: "localhost", PG_USER: "postgres", PG_PASSWORD: "x", PG_APP_DB: "wedding_unit_test", STORAGE_ROOT: "/tmp/x",
   FAMILY_BOOTSTRAP_LOGIN: "familia", ADMIN_EMAIL: "admin@test.local",
 };
-const good = { SESSION_SECRET: "k9Xv2Lq8Zr5Tn3Wm7Bd1Hc6Jp4Fs0Ya8Ug", FAMILY_BOOTSTRAP_PASSWORD: "Ux7-plain-Rt92", ADMIN_BOOTSTRAP_PASSWORD: "Qm4-plain-Vb81" };
+// generated at runtime so no secret-looking literals live in the repo (and secret scanners stay quiet)
+const rnd = () => randomBytes(24).toString("hex");
+const good = { SESSION_SECRET: rnd(), FAMILY_BOOTSTRAP_PASSWORD: rnd().slice(0, 16), ADMIN_BOOTSTRAP_PASSWORD: rnd().slice(0, 16) };
 
 describe("production config guards", () => {
   it("rejects the .env.example placeholder secret in production", () => {
