@@ -14,6 +14,8 @@ const schema = z.object({
   PG_POOL_MAX: z.coerce.number().int().default(10),
   STORAGE_ROOT: z.string().min(1),
   SESSION_SECRET: z.string().min(32),
+  /** Optional hardening: if set, /admin and /api/admin require header `x-tunnel-auth` = this value. */
+  ADMIN_TUNNEL_SECRET: z.string().min(16).optional(),
   FAMILY_BOOTSTRAP_LOGIN: z.string().min(1),
   FAMILY_BOOTSTRAP_PASSWORD: z.string().min(6),
   ADMIN_EMAIL: z.string().email().transform((s) => s.toLowerCase()),
