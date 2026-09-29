@@ -62,3 +62,24 @@ describe("logger redaction", () => {
     expect(out).toContain('"ok":1');
   });
 });
+
+describe("access context in logs", () => {
+  it("adds ip, user agent, user and role to every line logged inside a request", async () => {
+    const { runWithContext, setContextUser } = await import("@/server/context");
+    const lines: string[] = [];
+    const orig = console.log;
+    process.env.LOG_LEVEL = "info"; process.env.LOG_FORMAT = "json"; process.env.LOG_DIR = "";
+    console.log = (l: string) => lines.push(l);
+    try {
+      await runWithContext({ rid: "r1", ip: "203.0.113.9", ua: "Mozilla/5.0 test" }, async () => {
+        log.info("before-login");
+        setContextUser({ id: "u1", displayName: "Maria", role: "USER" });
+        log.info("after-login");
+      });
+    } finally { console.log = orig; }
+    const [a, b] = lines.map((l) => JSON.parse(l));
+    expect(a).toMatchObject({ rid: "r1", ip: "203.0.113.9", ua: "Mozilla/5.0 test" });
+    expect(a.uid).toBeUndefined();
+    expect(b).toMatchObject({ uid: "u1", user: "Maria", role: "USER", ip: "203.0.113.9" });
+  });
+});

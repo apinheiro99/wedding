@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { requestContext } from "./context";
 
 /**
  * Logger estruturado para depuração.
@@ -140,7 +141,9 @@ function emit(level: Level, scope: string | undefined, ctx: Data, msg: string, d
   const num = LEVELS[level];
   if (num < minLevel() && !(scope && num >= LEVELS.debug && debugScopes().has(scope))) return;
   const t = new Date().toISOString();
-  const payload = redact({ ...ctx, ...data }) as Data;
+  const rc = requestContext();
+  const who = rc ? { rid: rc.rid, ip: rc.ip, ua: rc.ua, uid: rc.uid, user: rc.user, role: rc.role } : {};
+  const payload = redact({ ...who, ...ctx, ...data }) as Data;
   const record = { t, level, ...(scope ? { scope } : {}), msg, ...payload };
   const json = JSON.stringify(record);
   toFile(num, json);

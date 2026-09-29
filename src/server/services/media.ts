@@ -24,6 +24,7 @@ export async function finalizeUpload(uploadId: string) {
   const r = await db().query("SELECT u.*, us.folder_name FROM uploads u JOIN users us ON us.id = u.user_id WHERE u.id = $1", [uploadId]);
   const up = r.rows[0];
   if (!up || !["VERIFYING", "FINALIZING"].includes(up.state)) return up?.state ?? "MISSING";
+  log.info("upload.finalizing", { uploadId, userId: up.user_id, filename: up.original_filename, size: Number(up.expected_size) });
   const staging = abs(`staging/${uploadId}/data`);
   const emit = (state: string, mediaId?: string | null, reason?: string | null) =>
     publish({ t: "upload", userId: up.user_id, uploadId, state, mediaId, reason });
@@ -117,11 +118,13 @@ async function restoreMediaTx(c: Queryable, mediaId: string, byUserId: string, w
 }
 
 export function restoreMedia(mediaId: string, byUserId: string, why: "REUPLOAD" | "ADMIN") {
+  log.info("media.restored", { mediaId, why });
   return tx((c) => restoreMediaTx(c, mediaId, byUserId, why));
 }
 
 /** §15 — owner (or admin) soft delete. The original stays on disk. */
 export async function softDelete(mediaId: string, actor: { id: string; isAdmin: boolean }) {
+  log.info("media.deleted", { mediaId, byAdmin: actor.isAdmin });
   return tx(async (c) => {
     const r = await c.query("SELECT uploader_user_id, package_id, deleted_at FROM media WHERE id = $1 FOR UPDATE", [mediaId]);
     const m = r.rows[0];

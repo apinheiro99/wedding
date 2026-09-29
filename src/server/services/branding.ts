@@ -1,3 +1,4 @@
+import { log } from "../log";
 import fsp from "node:fs/promises";
 import sharp from "sharp";
 import { abs } from "../storage";
@@ -21,6 +22,7 @@ export async function heroVersions(): Promise<Record<Slot, number>> {
 }
 
 export async function setHero(slot: Slot, input: Buffer) {
+  log.info("admin.hero_set", { slot, bytes: input.length });
   await fsp.mkdir(abs("branding"), { recursive: true });
   try {
     for (const w of [900, 1920] as const) {
@@ -33,6 +35,7 @@ export async function setHero(slot: Slot, input: Buffer) {
 }
 
 export async function removeHero(slot: Slot) {
+  log.info("admin.hero_removed", { slot });
   const v = await heroVersions();
   await setSetting("hero_versions", { ...v, [slot]: 0 });
   for (const w of [900, 1920] as const) await fsp.rm(heroPath(slot, w), { force: true }).catch(() => {});

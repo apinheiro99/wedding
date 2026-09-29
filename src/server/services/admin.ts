@@ -1,3 +1,4 @@
+import { log } from "../log";
 import { db } from "../db";
 import { config } from "../config";
 import { isValidEmail } from "../domain/otp";
@@ -63,6 +64,7 @@ export async function rebuildPackage(id: string) {
 }
 
 export async function updateSettings(p: { notificationsEnabled?: boolean; eventTitle?: string; logLevel?: Settings["log_level"]; logRetainDays?: number; reportEmail?: string }) {
+  log.info("admin.settings_changed", { keys: Object.keys(p) });
   if (p.reportEmail !== undefined) {
     const e = p.reportEmail.trim().toLowerCase();
     if (!isValidEmail(e) || /\.(local|invalid|test|example)$/.test(e)) throw badRequest("E-mail inválido para o relatório.");

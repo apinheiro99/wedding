@@ -1,3 +1,4 @@
+import { log } from "@/server/log";
 import { handle } from "@/server/http";
 import { requireUser } from "@/server/services/auth";
 import { mediaFile } from "@/server/services/media";
@@ -10,6 +11,7 @@ export const GET = handle<Ctx>(async (req, { params }) => {
   const id = (await params).id;
   const f = await mediaFile(id, { isAdmin: u.sessionKind === "ADMIN" });
   const inline = new URL(req.url).searchParams.get("inline") === "1";
+  if (!inline && !req.headers.get("range")) log.info("download.original", { mediaId: id, bytes: f.size, file: f.filename });
   if (!inline && !req.headers.get("range")) await db().query("INSERT INTO download_events (user_id, media_id, bytes) VALUES ($1, $2, $3)", [u.id, id, f.size]);
   return serveFile(req, f.path, { filename: f.filename, size: f.size, mime: f.mime, inline });
 });

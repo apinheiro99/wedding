@@ -1,5 +1,6 @@
 import { log } from "./log";
 import crypto from "node:crypto";
+import { runWithContext } from "./context";
 
 export class HttpError extends Error {
   constructor(public status: number, public code: string, message: string) { super(message); }
@@ -17,14 +18,22 @@ export function handle<C = unknown>(fn: Handler<C>): Handler<C> {
     const rid = req.headers.get("x-request-id") ?? crypto.randomUUID().slice(0, 8);
     const t0 = Date.now();
     const path = new URL(req.url).pathname;
-    const l = log.child("http", { rid, method: req.method, path });
+    const ip = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? undefined;
+    const ua = req.headers.get("user-agent")?.slice(0, 200) ?? undefined;
+    return runWithContext({ rid, ip, ua }, () => run(req, ctx, rid, t0, path));
+  };
+
+  async function run(req: Request, ctx: C, rid: string, t0: number, path: string): Promise<Response> {
+    const l = log.child("http", { method: req.method, path });
+    // access log: every request at info (who = ip/user/role come from the request context); probes stay at debug
+    const quiet = path === "/ready" || path === "/health";
     const done = (status: number) => {
-      const ms = Date.now() - t0;
-      const d = { status, ms, ip: req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for") ?? undefined };
+      const d = { status, ms: Date.now() - t0 };
       if (status >= 500) l.error("request", d);
       else if (status >= 400) l.warn("request", d);
-      else if (ms > 2000) l.warn("request.slow", d);
-      else l.debug("request", d);
+      else if (d.ms > 2000) l.warn("request.slow", d);
+      else if (quiet) l.debug("request", d);
+      else l.info("request", d);
     };
     try {
       if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) checkCsrf(req);
@@ -42,7 +51,7 @@ export function handle<C = unknown>(fn: Handler<C>): Handler<C> {
       done(500);
       return Response.json({ error: "INTERNAL", message: "Erro interno. Tente novamente." }, { status: 500, headers: { "x-request-id": rid } });
     }
-  };
+  }
 }
 
 /** SameSite=Lax cookies + require same-origin header for mutations. */

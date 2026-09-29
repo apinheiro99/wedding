@@ -1,3 +1,4 @@
+import { setContextUser } from "../context";
 import { cookies } from "next/headers";
 import { config } from "../config";
 import { db, tx, type Queryable } from "../db";
@@ -31,7 +32,11 @@ export async function checkFamilyCredential(login: string, password: string): Pr
   const hash = await getSetting("family_password_hash");
   const loginOk = safeEqual(login.trim().toLowerCase(), expectedLogin);
   const passOk = hash ? await verifyPassword(hash, password) : false;
-  if (!loginOk || !passOk) throw new HttpError(401, "INVALID_FAMILY_CREDENTIAL", "Usuário ou senha da família incorretos.");
+  if (!loginOk || !passOk) {
+    log.warn("auth.family_failed", { attemptedLogin: login.trim().slice(0, 60), loginMatched: loginOk });
+    throw new HttpError(401, "INVALID_FAMILY_CREDENTIAL", "Usuário ou senha da família incorretos.");
+  }
+  log.info("auth.family_ok");
   const token = randomToken();
   await db().query("INSERT INTO onboarding_grants (token_hash, expires_at) VALUES ($1, now() + interval '30 minutes')", [sha256Hex(token)]);
   return token;
@@ -44,6 +49,7 @@ export async function hasOnboardingGrant(token: string | undefined): Promise<boo
 }
 
 export async function setFamilyCredential(login: string, password: string) {
+  log.info("admin.family_credential_changed", { login: login.trim().toLowerCase() });
   if (password.length < 6) throw badRequest("A senha precisa ter ao menos 6 caracteres.");
   await setSetting("family_login", login.trim().toLowerCase());
   await setSetting("family_password_hash", await hashPassword(password));
@@ -75,16 +81,21 @@ export async function startSignup(rawEmail: string, rawName: string) {
   if (exists.rowCount) throw new HttpError(409, "EMAIL_EXISTS", "Este e-mail já tem acesso. Use “Já tenho acesso”.");
   const code = await createOtp(email, "SIGNUP", name);
   await sendOtp(email, code);
+  log.info("auth.otp_sent", { email, purpose: "SIGNUP", name });
 }
 
 export async function startLogin(rawEmail: string) {
   const email = normalizeEmail(rawEmail);
   if (!isValidEmail(email)) throw badRequest("E-mail inválido.");
   const r = await db().query("SELECT status FROM users WHERE lower(email) = $1", [email]);
-  if (!r.rowCount) throw new HttpError(404, "EMAIL_NOT_FOUND", "Não encontramos este e-mail. É seu primeiro acesso?");
+  if (!r.rowCount) {
+    log.warn("auth.login_unknown_email", { email });
+    throw new HttpError(404, "EMAIL_NOT_FOUND", "Não encontramos este e-mail. É seu primeiro acesso?");
+  }
   if (r.rows[0].status !== "ACTIVE") throw forbidden("Acesso desativado. Fale com o administrador.");
   const code = await createOtp(email, "LOGIN", null);
   await sendOtp(email, code);
+  log.info("auth.otp_sent", { email, purpose: "LOGIN" });
 }
 
 /** Verifies the latest open challenge. On success returns the (possibly newly created) user id. */
@@ -123,6 +134,7 @@ export async function verifyOtp(rawEmail: string, code: string): Promise<string>
       );
       if (ins.rowCount) {
         await c.query("INSERT INTO audit_events (type, user_id) VALUES ('USER_CREATED', $1)", [ins.rows[0].id]);
+        log.info("auth.signup", { email, userId: ins.rows[0].id, name: ch.display_name });
         return ins.rows[0].id as string;
       }
     }
@@ -143,6 +155,7 @@ export async function verifyOtp(rawEmail: string, code: string): Promise<string>
 // ---------- sessions ----------
 
 export async function createSession(userId: string, kind: "USER" | "ADMIN", userAgent: string | null, q: Queryable = db()) {
+  log.info("auth.session_created", { userId, kind });
   const token = randomToken();
   const ttlDays = kind === "ADMIN" ? 1 : config().SESSION_TTL_DAYS;
   await q.query(
@@ -169,10 +182,13 @@ export async function sessionFromToken(token: string | undefined, kind: "USER" |
     const days = kind === "ADMIN" ? 1 : config().SESSION_TTL_DAYS;
     await db().query("UPDATE sessions SET last_seen_at = now(), expires_at = now() + make_interval(days => $2) WHERE id = $1", [row.sid, days]);
   }
-  return { id: row.id, email: row.email, displayName: row.display_name, role: row.role, sessionKind: kind };
+  const su: SessionUser = { id: row.id, email: row.email, displayName: row.display_name, role: row.role, sessionKind: kind };
+  setContextUser(su);
+  return su;
 }
 
 export async function revokeSession(token: string | undefined) {
+  log.info("auth.logout");
   if (token) await db().query("UPDATE sessions SET revoked_at = now() WHERE token_hash = $1", [sha256Hex(token)]);
 }
 
@@ -217,9 +233,10 @@ export async function adminLogin(rawEmail: string, password: string) {
   const r = await db().query("SELECT id, password_hash FROM users WHERE lower(email) = $1 AND role = 'ADMIN' AND status = 'ACTIVE'", [email]);
   const ok = r.rows[0]?.password_hash ? await verifyPassword(r.rows[0].password_hash, password) : false;
   if (!ok) {
-    log.warn("admin.login_failed");
+    log.warn("admin.login_failed", { email, knownAdmin: !!r.rowCount });
     throw new HttpError(401, "INVALID_CREDENTIALS", "E-mail ou senha incorretos.");
   }
+  log.info("admin.login", { email, userId: r.rows[0].id });
   return r.rows[0].id as string;
 }
 

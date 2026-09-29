@@ -1,3 +1,4 @@
+import { log } from "../log";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import { Readable } from "node:stream";
@@ -53,6 +54,7 @@ export async function createUpload(userId: string, u: CreateUpload) {
       u.fingerprint?.slice(0, 500) ?? null, u.sha256 && /^[a-f0-9]{64}$/.test(u.sha256) ? u.sha256 : null],
   );
   const id = r.rows[0].id as string;
+  log.info("upload.created", { uploadId: id, userId, filename: u.filename, size: u.size, mime: u.mime ?? null });
   await fsp.mkdir(abs(`staging/${id}`), { recursive: true });
   await fsp.writeFile(stagingPath(id), "");
   if (u.size === 0) await markReceived(id);

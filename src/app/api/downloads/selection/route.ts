@@ -1,3 +1,4 @@
+import { log } from "@/server/log";
 import { Readable } from "node:stream";
 import { handle, badRequest } from "@/server/http";
 import { requireUser } from "@/server/services/auth";
@@ -21,6 +22,7 @@ export const POST = handle(async (req) => {
     seen.add(name.toLowerCase());
     return { path: abs(m.relative_path), name };
   });
+  log.info("download.selection");
   await db().query("INSERT INTO download_events (user_id, bytes) VALUES ($1, NULL)", [u.id]);
   return new Response(Readable.toWeb(streamZip(entries)) as ReadableStream, {
     headers: { "content-type": "application/zip", "content-disposition": `attachment; filename="selecao-${entries.length}-arquivos.zip"`, "cache-control": "private, no-store" },
