@@ -43,8 +43,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (parsed.data.EMAIL_PROVIDER === "resend" && !parsed.data.RESEND_API_KEY) {
     throw new Error("Invalid configuration: RESEND_API_KEY required for resend provider");
   }
-  if (parsed.data.NODE_ENV === "production") {
-    const weak = (v: string) => /change-?me|example|password|senha|12345|secret/i.test(v);
+  // `next build` also runs with NODE_ENV=production but with throwaway values, so only guard the real runtime.
+  if (parsed.data.NODE_ENV === "production" && env.NEXT_PHASE !== "phase-production-build") {
+    const weak = (v: string) => /change-?me|example|12345|^(password|senha|admin|secret)\d*$/i.test(v);
     const bad = (["SESSION_SECRET", "FAMILY_BOOTSTRAP_PASSWORD", "ADMIN_BOOTSTRAP_PASSWORD"] as const).filter((k) => weak(parsed.data[k]));
     if (bad.length) throw new Error(`Invalid configuration: placeholder/weak value in production for ${bad.join(", ")}`);
   }
