@@ -83,3 +83,46 @@ describe("access context in logs", () => {
     expect(b).toMatchObject({ uid: "u1", user: "Maria", role: "USER", ip: "203.0.113.9" });
   });
 });
+
+describe("ADMIN_TUNNEL_SECRET config guard", () => {
+  it("rejects a secret shorter than 16 chars", () => {
+    expect(() => loadConfig({ ...base, ...good, ADMIN_TUNNEL_SECRET: "short" } as any)).toThrow();
+  });
+  it("accepts a strong secret, and omitting it entirely", () => {
+    expect(() => loadConfig({ ...base, ...good, ADMIN_TUNNEL_SECRET: "a".repeat(16) } as any)).not.toThrow();
+    expect(() => loadConfig({ ...base, ...good } as any)).not.toThrow();
+  });
+});
+
+describe("middleware: admin panel gate", () => {
+  const withEnv = async (vars: Record<string, string | undefined>, fn: () => Promise<void>) => {
+    const prev: Record<string, string | undefined> = {};
+    for (const k of Object.keys(vars)) { prev[k] = process.env[k]; if (vars[k] === undefined) delete process.env[k]; else process.env[k] = vars[k]; }
+    try { await fn(); } finally { for (const k of Object.keys(prev)) { if (prev[k] === undefined) delete process.env[k]; else process.env[k] = prev[k]; } }
+  };
+  const req = (path: string, headers: Record<string, string> = {}) => {
+    const { NextRequest } = require("next/server");
+    return new NextRequest(`http://localhost${path}`, { headers });
+  };
+
+  it("legacy mode (no secret): blocks anything that carries a Cloudflare header, allows the rest", async () => {
+    await withEnv({ ADMIN_TUNNEL_SECRET: undefined }, async () => {
+      const { middleware } = await import("@/middleware");
+      const viaCf = middleware(req("/admin/login", { "cf-ray": "x" }));
+      expect(viaCf.status).toBe(404);
+      const direct = middleware(req("/admin/login"));
+      expect(direct.status).not.toBe(404);
+    });
+  });
+
+  it("strong mode (secret set): requires a matching x-tunnel-auth, closing the fail-open even with spoofed cf-* headers", async () => {
+    await withEnv({ ADMIN_TUNNEL_SECRET: "s".repeat(20) }, async () => {
+      const { middleware } = await import("@/middleware");
+      expect(middleware(req("/admin/login")).status).toBe(404); // no header at all
+      expect(middleware(req("/admin/login", { "cf-ray": "x" })).status).toBe(404); // spoofed cf-* alone isn't enough
+      expect(middleware(req("/admin/login", { "x-tunnel-auth": "wrong-secret-wrong-secret" })).status).toBe(404);
+      expect(middleware(req("/admin/login", { "x-tunnel-auth": "s".repeat(20) })).status).not.toBe(404);
+      expect(middleware(req("/api/admin/metrics", { "x-tunnel-auth": "nope" })).status).toBe(404);
+    });
+  });
+});
