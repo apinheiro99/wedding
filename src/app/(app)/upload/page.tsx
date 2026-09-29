@@ -17,9 +17,20 @@ export default function UploadPage() {
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [drag, setDrag] = useState(false);
+  const [preparing, setPreparing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const dirRef = useRef<HTMLInputElement>(null);
   useEffect(() => m.subscribe(setSnap), [m]);
+  // The phone's own photo picker (iCloud download/HEIC-video conversion) can take a while before
+  // it hands files back to us, and until then we get no event at all — so as soon as the picker is
+  // opened we show our own "preparando" message, and clear it once files arrive (onChange) or the
+  // picker is dismissed (window regains focus), whichever comes first.
+  useEffect(() => {
+    const onFocus = () => setTimeout(() => setPreparing(false), 600);
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
+  const openPicker = (ref: typeof fileRef) => { setPreparing(true); ref.current?.click(); };
 
   const t = snap?.totals;
   const list = useMemo(() => (snap ? snap.items.filter((i) => match(filter, i.state)) : []), [snap, filter]);
@@ -27,7 +38,7 @@ export default function UploadPage() {
   const hasItems = !!t && t.total > 0;
   const running = !!t && t.pending > 0;
 
-  const pick = (files: FileList | null) => { if (files?.length) void m.addFiles(Array.from(files)); };
+  const pick = (files: FileList | null) => { setPreparing(false); if (files?.length) void m.addFiles(Array.from(files)); };
 
   return (
     <>
@@ -48,13 +59,20 @@ export default function UploadPage() {
             </div>
           </div>
           <div className={`flex flex-wrap gap-2 ${hasItems ? "" : "mt-7 justify-center"}`}>
-            <button className="btn-primary" onClick={() => fileRef.current?.click()}>Selecionar arquivos</button>
-            <button className="btn-ghost hidden sm:inline-flex" onClick={() => dirRef.current?.click()}>Selecionar pasta</button>
+            <button className="btn-primary" disabled={preparing} onClick={() => openPicker(fileRef)}>{preparing ? "Abrindo…" : "Selecionar arquivos"}</button>
+            <button className="btn-ghost hidden sm:inline-flex" disabled={preparing} onClick={() => openPicker(dirRef)}>Selecionar pasta</button>
           </div>
         </div>
         <input ref={fileRef} type="file" multiple hidden accept="image/*,video/*,*/*" onChange={(e) => { pick(e.target.files); e.target.value = ""; }} />
         <input ref={dirRef} type="file" multiple hidden {...({ webkitdirectory: "", directory: "" } as object)} onChange={(e) => { pick(e.target.files); e.target.value = ""; }} />
       </div>
+
+      {preparing && (
+        <p role="status" className="mt-4 flex items-center gap-2 rounded-2xl bg-terra-soft px-4 py-3 text-sm text-terra-dark">
+          <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent" />
+          Abrindo suas fotos… vídeos e fotos guardados só na nuvem (iCloud) podem levar alguns segundos. Não feche esta página.
+        </p>
+      )}
 
       {snap && !snap.online && (
         <p role="status" className="mt-4 flex items-center gap-2 rounded-2xl bg-amber-soft px-4 py-3 text-sm text-amber">
