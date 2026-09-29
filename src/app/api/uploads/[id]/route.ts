@@ -1,17 +1,17 @@
 import { handle, HttpError, badRequest } from "@/server/http";
-import { requireUser } from "@/server/services/auth";
+import { requireMember } from "@/server/services/auth";
 import { appendChunk, cancelUpload, uploadStatus } from "@/server/services/uploads";
 type Ctx = { params: Promise<{ id: string }> };
 export const dynamic = "force-dynamic";
 
 export const GET = handle<Ctx>(async (_req, { params }) => {
-  const u = await requireUser();
+  const u = await requireMember();
   return Response.json(await uploadStatus(u.id, (await params).id));
 });
 
 /** tus-style PATCH: Upload-Offset header + raw chunk body, streamed to disk. */
 export const PATCH = handle<Ctx>(async (req, { params }) => {
-  const u = await requireUser();
+  const u = await requireMember();
   const offset = Number(req.headers.get("upload-offset"));
   if (!Number.isSafeInteger(offset) || offset < 0) throw badRequest("Upload-Offset inválido.");
   try {
@@ -26,6 +26,6 @@ export const PATCH = handle<Ctx>(async (req, { params }) => {
 });
 
 export const DELETE = handle<Ctx>(async (_req, { params }) => {
-  const u = await requireUser();
+  const u = await requireMember();
   return Response.json(await cancelUpload(u.id, (await params).id));
 });

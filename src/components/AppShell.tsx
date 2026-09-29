@@ -32,6 +32,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     api<Me>("/api/me").then(setMe).catch((e) => { if (e instanceof ApiError && e.status === 401) router.replace("/login"); });
   }, [router]);
   useEffect(load, [load]);
+  const isAdmin = me?.isAdmin ?? false;
+  const nav = isAdmin ? NAV.filter((n) => n.href !== "/upload" && n.href !== "/account") : NAV;
+  useEffect(() => {
+    if (isAdmin && (path.startsWith("/upload") || path.startsWith("/account"))) router.replace("/photos");
+  }, [isAdmin, path, router]);
 
   if (!me) return <div className="min-h-dvh grid place-items-center text-muted"><span className="h-5 w-5 animate-spin rounded-full border-2 border-terra border-r-transparent" /></div>;
 
@@ -41,7 +46,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 md:h-16 md:px-8">
           <Link href="/photos" className="font-serif text-xl tracking-tight">Nosso álbum</Link>
           <nav className="hidden md:flex items-center gap-1" aria-label="Principal">
-            {NAV.map((n) => {
+            {nav.map((n) => {
               const active = path.startsWith(n.href);
               return n.href === "/upload" ? (
                 <Link key={n.href} href={n.href} className={`btn-primary btn-sm ml-2 ${active ? "ring-4 ring-terra/20" : ""}`}><Icon d={n.icon} className="h-4 w-4" />Enviar fotos</Link>
@@ -57,11 +62,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </header>
       <main className="mx-auto max-w-7xl px-4 pb-10 pt-5 md:px-8 md:pt-8 min-h-[70dvh]">{children}</main>
       <Footer className="pb-28 md:pb-10" />
-      {!path.startsWith("/upload") && <UploadPill />}
+      {!isAdmin && !path.startsWith("/upload") && <UploadPill />}
       <UploadEvents />
       <nav aria-label="Principal" className="md:hidden fixed inset-x-0 bottom-0 z-30 border-t border-line/70 bg-card/95 backdrop-blur-md pb-safe">
-        <div className="grid grid-cols-4">
-          {NAV.map((n) => {
+        <div className={nav.length === 4 ? "grid grid-cols-4" : "grid grid-cols-2"}>
+          {nav.map((n) => {
             const active = path.startsWith(n.href);
             if (n.href === "/upload") return (
               <Link key={n.href} href={n.href} className="flex flex-col items-center gap-1 py-2">

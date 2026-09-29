@@ -7,7 +7,7 @@ const TZ_RE = /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+){0,2}$/;
 export async function metrics(tzRaw: string | null) {
   const tz = tzRaw && TZ_RE.test(tzRaw) ? tzRaw : "America/Sao_Paulo";
   const q = async (sql: string, p: unknown[] = []) => (await db().query(sql, p)).rows;
-  const active = "FROM media m WHERE m.deleted_at IS NULL";
+  const active = "FROM media m WHERE m.deleted_at IS NULL AND m.uploader_user_id IN (SELECT id FROM users WHERE role = 'USER')";
 
   const [k] = await q(`SELECT count(*)::int AS total,
       count(*) FILTER (WHERE media_kind='IMAGE')::int AS photos, count(*) FILTER (WHERE media_kind='VIDEO')::int AS videos,
@@ -17,14 +17,14 @@ export async function metrics(tzRaw: string | null) {
       count(*) FILTER (WHERE metadata_json->>'latitude' IS NOT NULL)::int AS with_gps,
       count(*) FILTER (WHERE capture_at_source IN ('EXIF','CONTAINER'))::int AS with_camera_date ${active}`);
   const [u] = await q(`SELECT count(*)::int AS users, count(*) FILTER (WHERE created_at > now() - interval '7 days')::int AS new7 FROM users WHERE role='USER'`);
-  const [dup] = await q(`SELECT count(*)::int AS n, coalesce(sum(expected_size),0)::bigint AS bytes FROM uploads WHERE state='DUPLICATE'`);
-  const [res] = await q(`SELECT count(*)::int AS n FROM uploads WHERE state='RESTORED'`);
-  const [dl] = await q(`SELECT count(*)::int AS n, coalesce(sum(bytes),0)::bigint AS bytes, count(DISTINCT user_id)::int AS people FROM download_events`);
+  const [dup] = await q(`SELECT count(*)::int AS n, coalesce(sum(expected_size),0)::bigint AS bytes FROM uploads WHERE state='DUPLICATE' AND user_id IN (SELECT id FROM users WHERE role='USER')`);
+  const [res] = await q(`SELECT count(*)::int AS n FROM uploads WHERE state='RESTORED' AND user_id IN (SELECT id FROM users WHERE role='USER')`);
+  const [dl] = await q(`SELECT count(*)::int AS n, coalesce(sum(bytes),0)::bigint AS bytes, count(DISTINCT user_id)::int AS people FROM download_events WHERE user_id IN (SELECT id FROM users WHERE role = 'USER')`);
 
   const byPerson = await q(`SELECT u.id, u.display_name AS name, count(*)::int AS total,
       count(*) FILTER (WHERE m.media_kind='IMAGE')::int AS photos, count(*) FILTER (WHERE m.media_kind='VIDEO')::int AS videos,
       coalesce(sum(m.byte_size),0)::bigint AS bytes
-    FROM media m JOIN users u ON u.id = m.uploader_user_id WHERE m.deleted_at IS NULL GROUP BY u.id ORDER BY total DESC`);
+    FROM media m JOIN users u ON u.id = m.uploader_user_id WHERE m.deleted_at IS NULL AND u.role = 'USER' GROUP BY u.id ORDER BY total DESC`);
 
   const byFormat = await q(`SELECT upper(coalesce(nullif(substring(original_filename from '\\.([A-Za-z0-9]{1,5})$'),''),'?')) AS ext,
       count(*)::int AS n, coalesce(sum(byte_size),0)::bigint AS bytes ${active} GROUP BY 1 ORDER BY n DESC`);
@@ -37,12 +37,12 @@ export async function metrics(tzRaw: string | null) {
 
   const uploadsPerDay = await q(`SELECT to_char(d, 'YYYY-MM-DD') AS d, coalesce(c.n,0)::int AS n, coalesce(c.bytes,0)::bigint AS bytes
     FROM generate_series((now() AT TIME ZONE $1)::date - 29, (now() AT TIME ZONE $1)::date, interval '1 day') d
-    LEFT JOIN (SELECT (created_at AT TIME ZONE $1)::date AS day, count(*) AS n, sum(byte_size) AS bytes FROM media GROUP BY 1) c ON c.day = d::date
+    LEFT JOIN (SELECT (created_at AT TIME ZONE $1)::date AS day, count(*) AS n, sum(byte_size) AS bytes FROM media WHERE uploader_user_id IN (SELECT id FROM users WHERE role = 'USER') GROUP BY 1) c ON c.day = d::date
     ORDER BY d`, [tz]);
 
   const downloadsPerDay = await q(`SELECT to_char(d, 'YYYY-MM-DD') AS d, coalesce(c.n,0)::int AS n
     FROM generate_series((now() AT TIME ZONE $1)::date - 29, (now() AT TIME ZONE $1)::date, interval '1 day') d
-    LEFT JOIN (SELECT (started_at AT TIME ZONE $1)::date AS day, count(*) AS n FROM download_events GROUP BY 1) c ON c.day = d::date
+    LEFT JOIN (SELECT (started_at AT TIME ZONE $1)::date AS day, count(*) AS n FROM download_events WHERE user_id IN (SELECT id FROM users WHERE role = 'USER') GROUP BY 1) c ON c.day = d::date
     ORDER BY d`, [tz]);
 
   const cameras = await q(`SELECT trim(CASE WHEN metadata_json->>'model' ILIKE (metadata_json->>'make') || '%' THEN metadata_json->>'model'
@@ -59,7 +59,7 @@ export async function metrics(tzRaw: string | null) {
 
   const topDownloaded = await q(`SELECT u.display_name AS name, lpad(p.sequence_no::text, 2, '0') AS label, count(*)::int AS n
     FROM download_events de JOIN package_versions pv ON pv.id = de.package_version_id JOIN packages p ON p.id = pv.package_id
-    JOIN users u ON u.id = p.user_id GROUP BY 1, 2 ORDER BY n DESC LIMIT 6`);
+    JOIN users u ON u.id = p.user_id WHERE de.user_id IN (SELECT id FROM users WHERE role = 'USER') GROUP BY 1, 2 ORDER BY n DESC LIMIT 6`);
 
   const num = (x: unknown) => Number(x ?? 0);
   return {

@@ -188,6 +188,13 @@ export async function requireUser(): Promise<SessionUser> {
   return u;
 }
 
+/** Participante comum (sessão USER). O admin vê tudo, mas não envia fotos nem tem conta pessoal. */
+export async function requireMember(): Promise<SessionUser> {
+  const u = await requireUser();
+  if (u.role === "ADMIN") throw forbidden("O administrador não envia fotos nem tem conta pessoal.");
+  return u;
+}
+
 export async function requireAdmin(): Promise<SessionUser> {
   const jar = await cookies();
   const u = await sessionFromToken(jar.get(ADMIN_COOKIE)?.value, "ADMIN");
