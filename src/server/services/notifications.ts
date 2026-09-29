@@ -107,7 +107,12 @@ export async function runDailyReport(force = false) {
     ["Espaço livre", s.disk ? fb(s.disk.free) : "?"],
     ["Saúde", s.jobs.failed === 0 ? "OK" : "Atenção: jobs falhos"],
   ];
-  await sendAdminDailyReport(config().ADMIN_EMAIL, rows);
+  const to = config().REPORT_EMAIL ?? config().ADMIN_EMAIL;
+  if (/\.(local|invalid|test|example)$/i.test(to)) {
+    log.warn("daily_report.skipped", { reason: "recipient is not a deliverable address; set REPORT_EMAIL", to });
+  } else {
+    await sendAdminDailyReport(to, rows);
+  }
   await db().query("UPDATE daily_reports SET sent_at = now() WHERE report_date = $1", [today]);
   return true;
 }

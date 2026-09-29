@@ -18,6 +18,8 @@ const schema = z.object({
   FAMILY_BOOTSTRAP_PASSWORD: z.string().min(6),
   ADMIN_EMAIL: z.string().email().transform((s) => s.toLowerCase()),
   ADMIN_BOOTSTRAP_PASSWORD: z.string().min(8),
+  /** Where the daily report goes. Falls back to ADMIN_EMAIL, which may be a non-deliverable login-only address. */
+  REPORT_EMAIL: z.string().email().optional(),
   EMAIL_PROVIDER: z.enum(["dev", "memory", "resend"]).default("dev"),
   EMAIL_FROM: z.string().default("Fotos <fotos@example.com>"),
   RESEND_API_KEY: z.string().optional(),
