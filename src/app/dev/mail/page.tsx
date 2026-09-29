@@ -15,7 +15,7 @@ export default function DevMail() {
         {mails.map((m, i) => (
           <details key={i} open={i === 0} className="card p-4">
             <summary className="cursor-pointer"><b>{m.subject}</b> <span className="text-muted text-sm">→ {m.to} · {new Date(m.at).toLocaleTimeString()}</span></summary>
-            <div className="mt-3" dangerouslySetInnerHTML={{ __html: m.html }} />
+            <iframe className="mt-3 h-96 w-full rounded-xl bg-white" sandbox="" srcDoc={m.html} title={m.subject} />
           </details>
         ))}
       </div>

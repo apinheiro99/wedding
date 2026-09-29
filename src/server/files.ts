@@ -2,16 +2,21 @@ import fs from "node:fs";
 import { Readable } from "node:stream";
 import { notFound } from "./http";
 
+/** Só tipos passivos de mídia podem ser exibidos inline; qualquer outra coisa (html, svg, xml, js...) vira download. */
+const INLINE_SAFE = /^(image\/(jpeg|png|gif|webp|avif|heic|heif|bmp|tiff)|video\/[a-z0-9.+-]+|audio\/[a-z0-9.+-]+)$/i;
+
 /** Streams a file with Range support. Never buffers whole files; never cached by shared caches. */
 export async function serveFile(req: Request, path: string, o: { filename: string; size: number; mime: string; inline: boolean }) {
   const st = await fs.promises.stat(path).catch(() => null);
   if (!st) throw notFound("Arquivo indisponível.");
   const size = st.size;
+  const inline = o.inline && INLINE_SAFE.test(o.mime);
   const ascii = o.filename.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
   const headers: Record<string, string> = {
-    "content-type": o.inline ? o.mime : o.mime || "application/octet-stream",
-    "content-disposition": `${o.inline ? "inline" : "attachment"}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(o.filename)}`,
+    "content-type": inline ? o.mime : "application/octet-stream",
+    "content-disposition": `${inline ? "inline" : "attachment"}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(o.filename)}`,
     "accept-ranges": "bytes", "cache-control": "private, no-store", "x-content-type-options": "nosniff",
+    "content-security-policy": "sandbox; default-src 'none'",
   };
   const range = req.headers.get("range")?.match(/^bytes=(\d*)-(\d*)$/);
   if (range && (range[1] || range[2])) {

@@ -22,6 +22,7 @@ const schema = z.object({
   EMAIL_FROM: z.string().default("Fotos <fotos@example.com>"),
   RESEND_API_KEY: z.string().optional(),
   PACKAGE_TARGET_BYTES: z.coerce.number().int().positive().default(2 * 1024 ** 3),
+  MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(10 * 1024 ** 3),
   UPLOAD_CHUNK_BYTES: z.coerce.number().int().positive().default(8 * 1024 ** 2),
   DIGEST_QUIET_MINUTES: z.coerce.number().positive().default(15),
   SESSION_TTL_DAYS: z.coerce.number().positive().default(30),
@@ -41,6 +42,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   }
   if (parsed.data.EMAIL_PROVIDER === "resend" && !parsed.data.RESEND_API_KEY) {
     throw new Error("Invalid configuration: RESEND_API_KEY required for resend provider");
+  }
+  if (parsed.data.NODE_ENV === "production") {
+    const weak = (v: string) => /change-?me|example|password|senha|12345|secret/i.test(v);
+    const bad = (["SESSION_SECRET", "FAMILY_BOOTSTRAP_PASSWORD", "ADMIN_BOOTSTRAP_PASSWORD"] as const).filter((k) => weak(parsed.data[k]));
+    if (bad.length) throw new Error(`Invalid configuration: placeholder/weak value in production for ${bad.join(", ")}`);
   }
   return { ...parsed.data, STORAGE_ROOT: path.resolve(parsed.data.STORAGE_ROOT) };
 }

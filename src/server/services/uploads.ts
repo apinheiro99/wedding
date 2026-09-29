@@ -35,6 +35,7 @@ export type CreateUpload = { filename: string; size: number; mime?: string | nul
 export async function createUpload(userId: string, u: CreateUpload) {
   if (!u.filename || u.filename.length > 1000) throw badRequest("Nome de arquivo inválido.");
   if (!Number.isSafeInteger(u.size) || u.size < 0) throw badRequest("Tamanho inválido.");
+  if (u.size > config().MAX_UPLOAD_BYTES) throw new HttpError(413, "TOO_LARGE", "Arquivo grande demais.");
   if (u.fingerprint) {
     const r = await db().query(
       "SELECT id FROM uploads WHERE user_id = $1 AND fingerprint = $2 AND state = 'UPLOADING' ORDER BY created_at DESC LIMIT 1",
