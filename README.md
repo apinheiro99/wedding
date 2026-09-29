@@ -80,7 +80,7 @@ Copy [`.env.example`](.env.example). Configuration is validated at startup and t
 | `SESSION_SECRET` | ≥ 32 random chars. **Production refuses placeholder values.** |
 | `FAMILY_BOOTSTRAP_LOGIN` / `FAMILY_BOOTSTRAP_PASSWORD` | Shared guest credential, created on first boot (change it later in the admin). |
 | `ADMIN_EMAIL` / `ADMIN_BOOTSTRAP_PASSWORD` | Admin account, created on first boot. |
-| `REPORT_EMAIL` | Recipient of the daily admin report (a real, deliverable address). Falls back to `ADMIN_EMAIL`; addresses ending in `.local` are skipped. |
+| `REPORT_EMAIL` | Recipient of the daily admin report (a real, deliverable address). Default only: it can be changed in *Admin → Settings → Relatório diário*. Falls back to `ADMIN_EMAIL`; addresses ending in `.local` are skipped. |
 | `EMAIL_PROVIDER` | `dev`, `memory` (tests) or `resend`. |
 | `EMAIL_FROM` | e.g. `Photos <noreply@photos.example.com>` — must belong to a domain verified in Resend. |
 | `RESEND_API_KEY` | Required when `EMAIL_PROVIDER=resend`. |

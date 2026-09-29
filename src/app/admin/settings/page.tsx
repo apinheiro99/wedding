@@ -3,14 +3,15 @@ import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 
 export default function Settings() {
-  const [s, setS] = useState<{ notificationsEnabled: boolean; eventTitle: string; familyLogin: string; logLevel: string | null; logRetainDays: number } | null>(null);
+  const [s, setS] = useState<{ notificationsEnabled: boolean; eventTitle: string; familyLogin: string; logLevel: string | null; logRetainDays: number; reportEmail: string } | null>(null);
+  const [reportEmail, setReportEmail] = useState("");
   const [logLevel, setLogLevel] = useState("");
   const [retain, setRetain] = useState(7);
   const [title, setTitle] = useState("");
   const [login, setLogin] = useState("");
   const [pwd, setPwd] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
-  useEffect(() => { api<{ settings: NonNullable<typeof s> }>("/api/admin/overview").then((o) => { setS(o.settings); setTitle(o.settings.eventTitle); setLogin(o.settings.familyLogin); setLogLevel(o.settings.logLevel ?? ""); setRetain(o.settings.logRetainDays); }); }, []);
+  useEffect(() => { api<{ settings: NonNullable<typeof s> }>("/api/admin/overview").then((o) => { setS(o.settings); setTitle(o.settings.eventTitle); setLogin(o.settings.familyLogin); setLogLevel(o.settings.logLevel ?? ""); setRetain(o.settings.logRetainDays); setReportEmail(o.settings.reportEmail); }); }, []);
   const run = async (fn: () => Promise<unknown>, ok: string) => { setMsg(null); try { await fn(); setMsg(ok); } catch (e) { setMsg(e instanceof ApiError ? e.message : "Erro"); } };
   if (!s) return <div className="skeleton h-64 rounded-2xl" />;
   return (
@@ -31,6 +32,12 @@ export default function Settings() {
         <h2 className="font-medium">Título do evento</h2>
         <p className="mt-1 text-sm text-muted">Aparece na página inicial.</p>
         <input className="input mt-4" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} />
+        <button className="btn-primary btn-sm mt-3">Salvar</button>
+      </form>
+      <form className="card p-6" onSubmit={(e) => { e.preventDefault(); run(() => api("/api/admin/settings", { method: "PATCH", json: { reportEmail } }), "E-mail do relatório salvo."); }}>
+        <h2 className="font-medium">Relatório diário</h2>
+        <p className="mt-1 text-sm text-muted">Para onde vai o resumo diário. Use um e-mail que receba mensagens de verdade.</p>
+        <input className="input mt-4" type="email" value={reportEmail} onChange={(e) => setReportEmail(e.target.value)} placeholder="voce@exemplo.com" maxLength={200} required />
         <button className="btn-primary btn-sm mt-3">Salvar</button>
       </form>
       <form className="card p-6" onSubmit={(e) => { e.preventDefault(); run(() => api("/api/admin/settings", { method: "PATCH", json: { ...(logLevel ? { logLevel } : {}), logRetainDays: retain } }), "Configuração de logs salva."); }}>

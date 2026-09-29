@@ -107,7 +107,7 @@ export async function runDailyReport(force = false) {
     ["Espaço livre", s.disk ? fb(s.disk.free) : "?"],
     ["Saúde", s.jobs.failed === 0 ? "OK" : "Atenção: jobs falhos"],
   ];
-  const to = config().REPORT_EMAIL ?? config().ADMIN_EMAIL;
+  const to = (await getSetting("report_email")) ?? config().REPORT_EMAIL ?? config().ADMIN_EMAIL;
   if (/\.(local|invalid|test|example)$/i.test(to)) {
     log.warn("daily_report.skipped", { reason: "recipient is not a deliverable address; set REPORT_EMAIL", to });
   } else {

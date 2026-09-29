@@ -1,4 +1,6 @@
 import { db } from "../db";
+import { config } from "../config";
+import { isValidEmail } from "../domain/otp";
 import { badRequest, notFound } from "../http";
 import { adminStats } from "./notifications";
 import { getSetting, setSetting, type Settings } from "./settings";
@@ -10,7 +12,7 @@ export async function overview() {
   const pk = await db().query("SELECT state, count(*)::int AS n FROM packages GROUP BY state");
   return {
     stats, packages: Object.fromEntries(pk.rows.map((r) => [r.state, r.n])),
-    settings: { notificationsEnabled: (await getSetting("notifications_enabled")) ?? true, eventTitle: await getSetting("event_title"), familyLogin: await getSetting("family_login"), logLevel: (await getSetting("log_level")) ?? null, logRetainDays: (await getSetting("log_retain_days")) ?? 7 },
+    settings: { notificationsEnabled: (await getSetting("notifications_enabled")) ?? true, eventTitle: await getSetting("event_title"), familyLogin: await getSetting("family_login"), logLevel: (await getSetting("log_level")) ?? null, logRetainDays: (await getSetting("log_retain_days")) ?? 7, reportEmail: (await getSetting("report_email")) ?? config().REPORT_EMAIL ?? "" },
   };
 }
 
@@ -60,7 +62,12 @@ export async function rebuildPackage(id: string) {
   await markDirty(db(), id, "ADD");
 }
 
-export async function updateSettings(p: { notificationsEnabled?: boolean; eventTitle?: string; logLevel?: Settings["log_level"]; logRetainDays?: number }) {
+export async function updateSettings(p: { notificationsEnabled?: boolean; eventTitle?: string; logLevel?: Settings["log_level"]; logRetainDays?: number; reportEmail?: string }) {
+  if (p.reportEmail !== undefined) {
+    const e = p.reportEmail.trim().toLowerCase();
+    if (!isValidEmail(e) || /\.(local|invalid|test|example)$/.test(e)) throw badRequest("E-mail inválido para o relatório.");
+    await setSetting("report_email", e);
+  }
   if (p.logLevel !== undefined) await setSetting("log_level", p.logLevel);
   if (p.logRetainDays !== undefined) await setSetting("log_retain_days", p.logRetainDays);
   if (p.logLevel !== undefined || p.logRetainDays !== undefined) await applyLogSettings();

@@ -10,6 +10,7 @@ export type Settings = {
   hero_versions: Record<string, number>;
   log_level: "trace" | "debug" | "info" | "warn" | "error";
   log_retain_days: number;
+  report_email: string;
 };
 
 export async function getSetting<K extends keyof Settings>(key: K, q: Queryable = db()): Promise<Settings[K] | undefined> {
