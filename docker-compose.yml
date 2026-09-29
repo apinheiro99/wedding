@@ -4,6 +4,8 @@ services:
   web:
     build: .
     env_file: .env
+    # must match the owner of STORAGE_HOST_PATH (e.g. an NFS export), otherwise the app cannot write to /storage
+    user: "${APP_UID:-10001}:${APP_GID:-10001}"
     environment:
       NODE_ENV: production
       STORAGE_ROOT: /storage
@@ -21,6 +23,8 @@ services:
   worker:
     build: .
     env_file: .env
+    # must match the owner of STORAGE_HOST_PATH (e.g. an NFS export), otherwise the app cannot write to /storage
+    user: "${APP_UID:-10001}:${APP_GID:-10001}"
     environment:
       NODE_ENV: production
       STORAGE_ROOT: /storage
